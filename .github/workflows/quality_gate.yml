@@ -1,0 +1,22 @@
+name: Quality Gate
+
+on: push
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image:  google/dart:latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Verify code formatting
+        run: dartfmt --dry-run --set-exit-if-changed .
+      - name: Get dependencies
+        run: pub get
+      - name: Static code analysis
+        run: dartanalyzer --fatal-infos --fatal-warnings .
+      - name: Run tests
+        run: pub run test

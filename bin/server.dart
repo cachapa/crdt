@@ -30,7 +30,8 @@ class Server {
   Crdt crdt;
 
   Future<void> serve(int port) async {
-    var store = await HiveStore.create('.', 'server');
+    var home = Platform.environment['HOME'];
+    var store = await HiveStore.create('$home/.crdt-server', 'server');
     crdt = Crdt(store);
 
     var router = Router()

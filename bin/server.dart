@@ -59,18 +59,18 @@ class Server {
   }
 
   Future<Response> _getRecordHandler(Request request) async {
-    var name = request.url.path;
-    var record = crdt.get(name);
-    if (record == null) return Response.notFound('Not found: $name');
+    var key = request.url.path;
+    var record = crdt[key];
+    if (record == null) return Response.notFound('Not found: $key');
     var body = jsonEncode(record);
     return Response.ok(body);
   }
 
   Future<Response> _postRecordHandler(Request request) async {
-    var name = request.url.path;
+    var key = request.url.path;
     var map = json.decode(await request.readAsString());
     try {
-      crdt.put(name, map['data']);
+      crdt[key] = map['value'];
       return _crdtResponse();
     } on ClockDriftException catch (e) {
       return _errorResponse(e);
@@ -78,8 +78,8 @@ class Server {
   }
 
   Future<Response> _deleteRecordHandler(Request request) async {
-    var name = request.url.path;
-    crdt.delete(name);
+    var key = request.url.path;
+    crdt.delete(key);
     return _crdtResponse();
   }
 

@@ -21,26 +21,26 @@ class Crdt {
 
   Crdt.fromMap(Map<String, Record> map) : this(MapStore(map));
 
-  void put(String name, dynamic data) {
+  Record operator [](String key) => _store[key];
+
+  void operator []=(String key, dynamic value) {
     _canonicalTime = Timestamp.send(_canonicalTime);
-    _store[name] = Record(_canonicalTime, data);
+    _store[key] = Record(_canonicalTime, value);
   }
 
-  Record get(String name) => _store[name];
+  dynamic delete(String key) => this[key] = null;
 
-  dynamic delete(String name) => put(name, null);
+  void merge(Map<String, Record> remoteRecords) {
+    remoteRecords.forEach((key, remoteRecord) {
+      var localRecord = _store[key];
 
-  void merge(Map<String, Record> remoteItems) {
-    remoteItems.forEach((name, remoteItem) {
-      var localItem = _store[name];
-
-      if (localItem == null) {
+      if (localRecord == null) {
         // Insert if there's no local copy
-        _store[name] = Record(remoteItem.timestamp, remoteItem.data);
-      } else if (localItem.timestamp < remoteItem.timestamp) {
+        _store[key] = Record(remoteRecord.timestamp, remoteRecord.value);
+      } else if (localRecord.timestamp < remoteRecord.timestamp) {
         // Update if local copy is older
-        _canonicalTime = Timestamp.recv(_canonicalTime, remoteItem.timestamp);
-        _store[name] = Record(_canonicalTime, remoteItem.data);
+        _canonicalTime = Timestamp.recv(_canonicalTime, remoteRecord.timestamp);
+        _store[key] = Record(_canonicalTime, remoteRecord.value);
       }
     });
   }
@@ -51,21 +51,21 @@ class Crdt {
 
 class Record {
   final Timestamp timestamp;
-  final dynamic data;
+  final dynamic value;
 
-  Record(this.timestamp, this.data);
+  Record(this.timestamp, this.value);
 
   factory Record.fromMap(Map<String, dynamic> map) =>
-      Record(Timestamp.parse(map['timestamp']), map['data']);
+      Record(Timestamp.parse(map['timestamp']), map['value']);
 
   Map<String, dynamic> toMap() =>
-      {'timestamp': timestamp.toString(), 'data': data};
+      {'timestamp': timestamp.toString(), 'value': value};
 
   dynamic toJson() => toMap();
 
   @override
   bool operator ==(other) =>
-      other is Record && timestamp == other.timestamp && data == other.data;
+      other is Record && timestamp == other.timestamp && value == other.value;
 
   @override
   String toString() => toMap().toString();

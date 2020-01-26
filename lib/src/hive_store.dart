@@ -37,7 +37,7 @@ class ItemAdapter extends TypeAdapter<Record> {
   @override
   void write(BinaryWriter writer, Record item) {
     writer.write(item.timestamp);
-    writer.write(item.data);
+    writer.write(item.value);
   }
 
   @override

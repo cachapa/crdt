@@ -1,0 +1,20 @@
+# Cache and build files
+.packages
+.pub/
+build/
+packages
+pubspec.lock
+.gradle
+.dart_tool
+
+# IDE local settings
+.atom/
+.idea
+.vscode/
+
+# MacOS garbage
+.DS_Store
+
+# Hive stuff
+*.hive
+*.lock

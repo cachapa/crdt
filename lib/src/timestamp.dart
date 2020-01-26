@@ -3,12 +3,10 @@ import 'dart:math';
 const _maxDrift = 60000; // ms
 
 class Timestamp {
-  //extends Comparable<Timestamp> {
   final int millis;
   final int counter;
-  final String nodeId;
 
-  Timestamp(this.nodeId, [int millis, this.counter = 0])
+  Timestamp([int millis, this.counter = 0])
       : millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 
   factory Timestamp.parse(String timestamp) {
@@ -16,8 +14,7 @@ class Timestamp {
     var millis =
         DateTime.parse(parts.getRange(0, 3).join('-')).millisecondsSinceEpoch;
     var counter = int.parse(parts[3], radix: 16);
-    var nodeId = parts[4];
-    return Timestamp(nodeId, millis, counter);
+    return Timestamp(millis, counter);
   }
 
   /// Generates a unique, monotonic timestamp suitable for transmission to
@@ -44,7 +41,7 @@ class Timestamp {
       throw OverflowException(cNew);
     }
 
-    return Timestamp(timestamp.nodeId, lNew, cNew);
+    return Timestamp(lNew, cNew);
   }
 
   /// Parses and merges a timestamp from a remote system with the local
@@ -56,10 +53,7 @@ class Timestamp {
     var lMsg = msg.millis;
     var cMsg = msg.counter;
 
-    // Assert the node id and remote clock drift
-    if (msg.nodeId == clock.nodeId) {
-      throw DuplicateNodeException(clock.nodeId);
-    }
+    // Assert remote clock drift
     if (lMsg - phys > _maxDrift) {
       throw ClockDriftException(lMsg, phys, _maxDrift);
     }
@@ -87,19 +81,14 @@ class Timestamp {
       throw OverflowException(cNew);
     }
 
-    return Timestamp(clock.nodeId, lNew, cNew);
+    return Timestamp(lNew, cNew);
   }
-
-  /// Create a copy with a new nodeId
-  Timestamp clone(String nodeId) => Timestamp(nodeId, millis, counter);
 
   @override
   String toString() =>
       '${DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true).toIso8601String()}'
       '-'
-      '${counter.toRadixString(16).toUpperCase().padLeft(4, '0')}'
-      '-'
-      '${nodeId.toString().padLeft(16, '0')}';
+      '${counter.toRadixString(16).toUpperCase().padLeft(4, '0')}';
 
   @override
   int get hashCode => toString().hashCode;
@@ -132,9 +121,4 @@ class OverflowException implements Exception {
 
   @override
   String toString() => 'Timestamp counter overflow: $cNew';
-}
-
-class DuplicateNodeException implements Exception {
-  factory DuplicateNodeException(String node) =>
-      Exception('duplicate node identifier $node');
 }

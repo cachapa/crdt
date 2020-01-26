@@ -47,11 +47,10 @@ class ItemAdapter extends TypeAdapter<Record> {
 class TimestampAdapter extends TypeAdapter<Timestamp> {
   @override
   Timestamp read(BinaryReader reader) =>
-      Timestamp(reader.readString(), reader.readInt(), reader.readInt());
+      Timestamp(reader.readInt(), reader.readInt());
 
   @override
   void write(BinaryWriter writer, Timestamp timestamp) {
-    writer.writeString(timestamp.nodeId);
     writer.writeInt(timestamp.millis);
     writer.writeInt(timestamp.counter);
   }

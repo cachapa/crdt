@@ -1,18 +1,15 @@
-import 'package:uuid/uuid.dart';
-
 import '../crdt.dart';
 import 'store.dart';
 
 class Crdt {
-  final String nodeId;
   final Store _store;
 
   Timestamp _canonicalTime;
 
   Map<String, Record> get map => _store.map;
 
-  Crdt(this.nodeId, this._store) {
-    _canonicalTime = Timestamp(nodeId, 0);
+  Crdt(this._store) {
+    _canonicalTime = Timestamp(0);
 
     // Seed max canonical time
     for (var item in _store.values) {
@@ -22,8 +19,7 @@ class Crdt {
     }
   }
 
-  Crdt.fromMap(String nodeId, Map<String, Record> map)
-      : this(nodeId, MapStore(map));
+  Crdt.fromMap(Map<String, Record> map) : this(MapStore(map));
 
   void put(String name, dynamic data) {
     _canonicalTime = Timestamp.send(_canonicalTime);
@@ -40,8 +36,7 @@ class Crdt {
 
       if (localItem == null) {
         // Insert if there's no local copy
-        _store[name] =
-            Record(remoteItem.timestamp.clone(nodeId), remoteItem.data);
+        _store[name] = Record(remoteItem.timestamp, remoteItem.data);
       } else if (localItem.timestamp < remoteItem.timestamp) {
         // Update if local copy is older
         _canonicalTime = Timestamp.recv(_canonicalTime, remoteItem.timestamp);
@@ -52,9 +47,6 @@ class Crdt {
 
   @override
   String toString() => _store.toString();
-
-  static String generateNodeId() =>
-      Uuid().v4().replaceAll('-', '').substring(16);
 }
 
 class Record {

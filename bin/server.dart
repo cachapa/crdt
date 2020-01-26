@@ -31,7 +31,7 @@ class Server {
 
   Future<void> serve(int port) async {
     var store = await HiveStore.create('.', 'server');
-    crdt = Crdt(Crdt.generateNodeId(), store);
+    crdt = Crdt(store);
 
     var router = Router()
       ..get('/', _getCrdtHandler)
@@ -88,6 +88,5 @@ class Server {
     return Response.ok(body);
   }
 
-  Response _errorResponse(Exception e) =>
-      Response(412, body: '$e');
+  Response _errorResponse(Exception e) => Response(412, body: '$e');
 }

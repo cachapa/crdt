@@ -3,6 +3,7 @@ import 'dart:math';
 const _maxDrift = 60000; // ms
 const _maxCounter = 65535;
 
+/// A Hybrid Logical Clock implementation. Implements https://cse.buffalo.edu/tech-reports/2014-04.pdf
 class Timestamp {
   final int millis;
   final int counter;

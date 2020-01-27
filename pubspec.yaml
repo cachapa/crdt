@@ -1,5 +1,5 @@
 name: crdt
-description: A dart-native implementation of a Conflic-free Replicated Data Type abstraction layer.
+description: Dart implementation of Conflict-free Replicated Data Types (CRDTs).
 version: 1.0.0
 homepage: https://github.com/cachapa/crdt
 

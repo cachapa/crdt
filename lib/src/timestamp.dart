@@ -1,6 +1,7 @@
 import 'dart:math';
 
 const _maxDrift = 60000; // ms
+const _maxCounter = 65535;
 
 class Timestamp {
   final int millis;
@@ -10,57 +11,61 @@ class Timestamp {
       : millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 
   factory Timestamp.parse(String timestamp) {
-    var parts = timestamp.split('-');
+    var lastDash = timestamp.lastIndexOf('-');
     var millis =
-        DateTime.parse(parts.getRange(0, 3).join('-')).millisecondsSinceEpoch;
-    var counter = int.parse(parts[3], radix: 16);
+        DateTime.parse(timestamp.substring(0, lastDash)).millisecondsSinceEpoch;
+    var counter = int.parse(timestamp.substring(lastDash + 1), radix: 16);
     return Timestamp(millis, counter);
   }
 
   /// Generates a unique, monotonic timestamp suitable for transmission to
-  /// another system in string format
-  factory Timestamp.send(Timestamp timestamp, [int phys]) {
-    // Retrieve the local wall time
-    phys ??= DateTime.now().millisecondsSinceEpoch;
+  /// another system in string format. Local wall time will be used if [millis]
+  /// isn't supplied, useful for testing.
+  factory Timestamp.send(Timestamp timestamp, [int millis]) {
+    // Retrieve the local wall time if millis is null
+    millis ??= DateTime.now().millisecondsSinceEpoch;
 
-    // Unpack the clock.timestamp logical time and counter
-    var lOld = timestamp.millis;
-    var cOld = timestamp.counter;
+    // Unpack the timestamp's time and counter
+    var millisOld = timestamp.millis;
+    var counterOld = timestamp.counter;
 
     // Calculate the next logical time and counter
     // * ensure that the logical time never goes backward
     // * increment the counter if phys time does not advance
-    var lNew = max(lOld, phys);
-    var cNew = lOld == lNew ? cOld + 1 : 0;
+    var millisNew = max(millisOld, millis);
+    var counterNew = millisOld == millisNew ? counterOld + 1 : 0;
 
     // Check the result for drift and counter overflow
-    if (lNew - phys > _maxDrift) {
-      throw ClockDriftException(lNew, phys, _maxDrift);
+    if (millisNew - millis > _maxDrift) {
+      throw ClockDriftException(millisNew, millis);
     }
-    if (cNew > 65535) {
-      throw OverflowException(cNew);
+    if (counterNew > _maxCounter) {
+      throw OverflowException(counterNew);
     }
 
-    return Timestamp(lNew, cNew);
+    return Timestamp(millisNew, counterNew);
   }
 
   /// Parses and merges a timestamp from a remote system with the local
-  /// timeglobal uniqueness and monotonicity are preserved
-  factory Timestamp.recv(Timestamp clock, Timestamp msg, [int phys]) {
-    phys ??= DateTime.now().millisecondsSinceEpoch;
+  /// canonical timestamp to preserve monotonicity. Returns an updated canonical
+  /// timestamp instance. Local wall time will be used if [millis] isn't
+  /// supplied, useful for testing.
+  factory Timestamp.recv(Timestamp local, Timestamp remote, [int millis]) {
+    // Retrieve the local wall time if millis is null
+    millis ??= DateTime.now().millisecondsSinceEpoch;
 
-    // Unpack the message wall time/counter
-    var lMsg = msg.millis;
-    var cMsg = msg.counter;
+    // Unpack the remote's time and counter
+    var millisRemote = remote.millis;
+    var counterRemote = remote.counter;
 
     // Assert remote clock drift
-    if (lMsg - phys > _maxDrift) {
-      throw ClockDriftException(lMsg, phys, _maxDrift);
+    if (millisRemote - millis > _maxDrift) {
+      throw ClockDriftException(millisRemote, millis);
     }
 
     // Unpack the clock.timestamp logical time and counter
-    var lOld = clock.millis;
-    var cOld = clock.counter;
+    var millisLocal = local.millis;
+    var counterLocal = local.counter;
 
     // Calculate the next logical time and counter.
     // Ensure that the logical time never goes backward;
@@ -68,20 +73,22 @@ class Timestamp {
     // * if max = old > message, increment local counter,
     // * if max = message > old, increment message counter,
     // * otherwise, clocks are monotonic, reset counter
-    var lNew = max(max(lOld, phys), lMsg);
-    var cNew = lNew == lOld && lNew == lMsg
-        ? max(cOld, cMsg) + 1
-        : lNew == lOld ? cOld + 1 : lNew == lMsg ? cMsg + 1 : 0;
+    var millisNew = max(max(millisLocal, millis), millisRemote);
+    var counterNew = millisNew == millisLocal && millisNew == millisRemote
+        ? max(counterLocal, counterRemote) + 1
+        : millisNew == millisLocal
+            ? counterLocal + 1
+            : millisNew == millisRemote ? counterRemote + 1 : 0;
 
     // Check the result for drift and counter overflow
-    if (lNew - phys > _maxDrift) {
-      throw ClockDriftException(lNew, phys, _maxDrift);
+    if (millisNew - millis > _maxDrift) {
+      throw ClockDriftException(millisNew, millis);
     }
-    if (cNew > 65535) {
-      throw OverflowException(cNew);
+    if (counterNew > _maxCounter) {
+      throw OverflowException(counterNew);
     }
 
-    return Timestamp(lNew, cNew);
+    return Timestamp(millisNew, counterNew);
   }
 
   @override
@@ -104,21 +111,20 @@ class Timestamp {
 }
 
 class ClockDriftException implements Exception {
-  final int lNew;
-  final int phys;
-  final int maxDrift;
+  final int drift;
 
-  ClockDriftException(this.lNew, this.phys, this.maxDrift);
+  ClockDriftException(int millisTs, int millisWall)
+      : drift = millisWall - millisTs;
 
   @override
-  String toString() => 'Maximum clock drift exceeded: $lNew, $phys, $maxDrift';
+  String toString() => 'Clock drift of $drift ms exceeds maximum ($_maxDrift).';
 }
 
 class OverflowException implements Exception {
-  final int cNew;
+  final int counter;
 
-  OverflowException(this.cNew);
+  OverflowException(this.counter);
 
   @override
-  String toString() => 'Timestamp counter overflow: $cNew';
+  String toString() => 'Timestamp counter overflow: $counter.';
 }

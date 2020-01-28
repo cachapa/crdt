@@ -10,7 +10,7 @@ abstract class Store {
   Iterable<Record> get values;
 }
 
-class MapStore extends Store {
+class MapStore implements Store {
   final Map<String, Record> _map;
 
   MapStore(this._map);

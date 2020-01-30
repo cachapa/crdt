@@ -1,12 +1,14 @@
 import '../crdt.dart';
 import 'store.dart';
 
-class Crdt {
+typedef Decoder<T> = T Function(Map<String, dynamic> map);
+
+class Crdt<T> {
   final Store _store;
 
   Timestamp _canonicalTime;
 
-  Map<String, Record> get map => _store.map;
+  Map<String, Record<T>> get map => _store.map;
 
   Crdt(this._store) {
     _canonicalTime = Timestamp(0);
@@ -19,7 +21,11 @@ class Crdt {
     }
   }
 
-  Crdt.fromMap(Map<String, Record> map) : this(MapStore(map));
+  Crdt.fromMap(Map<String, Record<T>> map) : this(MapStore(map));
+
+  Crdt.fromJson(Map<String, dynamic> map, [Decoder<T> decoder])
+      : this.fromMap(map.map(
+            (key, value) => MapEntry(key, Record<T>.fromJson(value, decoder))));
 
   Record operator [](String key) => _store[key];
 
@@ -49,24 +55,25 @@ class Crdt {
   String toString() => _store.toString();
 }
 
-class Record {
+class Record<T> {
   final Timestamp timestamp;
-  final dynamic value;
+  final T value;
+
+  bool get isDeleted => value == null;
 
   Record(this.timestamp, this.value);
 
-  factory Record.fromMap(Map<String, dynamic> map) =>
-      Record(Timestamp.parse(map['timestamp']), map['value']);
+  Record.fromJson(Map<String, dynamic> map, Decoder<T> decoder)
+      : timestamp = Timestamp.parse(map['timestamp']),
+        value = decoder == null ? map['value'] : decoder(map['value']);
 
-  Map<String, dynamic> toMap() =>
+  Map<String, dynamic> toJson() =>
       {'timestamp': timestamp.toString(), 'value': value};
-
-  dynamic toJson() => toMap();
 
   @override
   bool operator ==(other) =>
       other is Record && timestamp == other.timestamp && value == other.value;
 
   @override
-  String toString() => toMap().toString();
+  String toString() => toJson().toString();
 }

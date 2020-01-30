@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:crdt/crdt.dart';
 import 'package:test/test.dart';
 
@@ -23,7 +25,7 @@ void main() {
     test('Delete value', () {
       crdt['x'] = 1;
       crdt.delete('x');
-      expect(crdt['x'].value, null);
+      expect(crdt['x'].isDeleted, isTrue);
     });
   });
 
@@ -99,7 +101,75 @@ void main() {
     test('Merge deleted item', () {
       crdt['x'] = 1;
       crdt.merge({'x': Record(Timestamp(now + 1000), null)});
-      expect(crdt['x'].value, null);
+      expect(crdt['x'].isDeleted, isTrue);
     });
   });
+
+  group('Serialization', () {
+    Crdt crdt;
+
+    setUp(() {
+      crdt = Crdt.fromMap({'x': Record<int>(Timestamp(1579633503110), 1)});
+    });
+
+    test('To map', () {
+      expect(crdt.map, {'x': Record<int>(Timestamp(1579633503110), 1)});
+    });
+
+    test('jsonEncode', () {
+      expect(jsonEncode(crdt.map),
+          '{"x":{"timestamp":"2020-01-21T19:05:03.110Z-0000","value":1}}');
+    });
+
+    test('jsonDecode', () {
+      var jsonMap = jsonDecode(
+          '{"x":{"timestamp":"2020-01-21T19:05:03.110Z-0000","value":1}}');
+      var decoded = Crdt<int>.fromJson(jsonMap);
+      expect(decoded.map, crdt.map);
+    });
+  });
+
+  group('Custom class serialization', () {
+    Crdt crdt;
+
+    setUp(() {
+      crdt = Crdt.fromMap({
+        'x': Record<TestClass>(Timestamp(1579633503110), TestClass('test'))
+      });
+    });
+
+    test('To map', () {
+      expect(crdt.map, {
+        'x': Record<TestClass>(Timestamp(1579633503110), TestClass('test'))
+      });
+    });
+
+    test('jsonEncode', () {
+      expect(jsonEncode(crdt.map),
+          '{"x":{"timestamp":"2020-01-21T19:05:03.110Z-0000","value":{"test":"test"}}}');
+    });
+
+    test('jsonDecode', () {
+      var jsonMap = jsonDecode(
+          '{"x":{"timestamp":"2020-01-21T19:05:03.110Z-0000","value":{"test":"test"}}}');
+      var decoded = Crdt<TestClass>.fromJson(jsonMap, TestClass.fromJson);
+      expect(decoded.map, crdt.map);
+    });
+  });
+}
+
+class TestClass {
+  final String test;
+
+  TestClass(this.test);
+
+  static TestClass fromJson(Map<String, dynamic> map) => TestClass(map['test']);
+
+  Map<String, dynamic> toJson() => {'test': test};
+
+  @override
+  bool operator ==(other) => other is TestClass && test == other.test;
+
+  @override
+  String toString() => test;
 }

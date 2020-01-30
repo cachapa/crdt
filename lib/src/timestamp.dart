@@ -4,7 +4,7 @@ const _maxDrift = 60000; // ms
 const _maxCounter = 65535;
 
 /// A Hybrid Logical Clock implementation. Implements https://cse.buffalo.edu/tech-reports/2014-04.pdf
-class Timestamp {
+class Timestamp implements Comparable<Timestamp> {
   final int millis;
   final int counter;
 
@@ -109,6 +109,9 @@ class Timestamp {
       other is Timestamp &&
       (millis < other.millis ||
           (millis == other.millis && counter < other.counter));
+
+  @override
+  int compareTo(Timestamp other) => this == other ? 0 : this < other ? -1 : 1;
 }
 
 class ClockDriftException implements Exception {

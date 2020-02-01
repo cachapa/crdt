@@ -33,7 +33,7 @@ void main() {
     Crdt crdt;
 
     setUp(() {
-      crdt = Crdt.fromMap({'x': Record(Timestamp(), 1)});
+      crdt = Crdt.fromMap({'x': Record(Hlc(), 1)});
     });
 
     test('Seed item', () {
@@ -47,8 +47,8 @@ void main() {
   });
 
   group('Merge', () {
-    Crdt crdt;
-    var now = DateTime.now().millisecondsSinceEpoch;
+    Crdt<int> crdt;
+    var now = DateTime.now().microsecondsSinceEpoch;
 
     setUp(() {
       crdt = Crdt.fromMap({});
@@ -56,74 +56,72 @@ void main() {
 
     test('Merge older', () {
       crdt['x'] = 2;
-      crdt.merge({'x': Record(Timestamp(now - 1000), 1)});
+      crdt.merge({'x': Record(Hlc(now - 10000), 1)});
       expect(crdt['x'].value, 2);
     });
 
     test('Merge very old', () {
       crdt['x'] = 2;
-      crdt.merge({'x': Record(Timestamp(now - 1000000), 1)});
+      crdt.merge({'x': Record(Hlc(now - 1000000), 1)});
       expect(crdt['x'].value, 2);
     });
 
     test('Merge newer', () {
       crdt['x'] = 1;
-      crdt.merge({'x': Record(Timestamp(now + 1000), 2)});
+      crdt.merge({'x': Record(Hlc(now + 1000000), 2)});
       expect(crdt['x'].value, 2);
     });
 
     test('Merge same', () {
       crdt['x'] = 2;
-      var remoteTs = crdt.map['x'].timestamp;
+      var remoteTs = crdt.map['x'].hlc;
       crdt.merge({'x': Record(remoteTs, 1)});
       expect(crdt['x'].value, 2);
     });
 
     test('Merge older, newer counter', () {
       crdt['x'] = 2;
-      crdt.merge({'x': Record(Timestamp(now - 1000, 2), 1)});
+      crdt.merge({'x': Record(Hlc(now - 1000000, 2), 1)});
       expect(crdt['x'].value, 2);
     });
 
     test('Merge same, newer counter', () {
       crdt['x'] = 1;
-      var remoteTs = Timestamp(crdt.map['x'].timestamp.millis, 2);
+      var remoteTs = Hlc(crdt.map['x'].hlc.micros, 2);
       crdt.merge({'x': Record(remoteTs, 2)});
       expect(crdt['x'].value, 2);
     });
 
     test('Merge new item', () {
-      var map = {'x': Record(Timestamp(), 2)};
+      var map = {'x': Record<int>(Hlc(), 2)};
       crdt.merge(map);
       expect(crdt.map, map);
     });
 
     test('Merge deleted item', () {
       crdt['x'] = 1;
-      crdt.merge({'x': Record(Timestamp(now + 1000), null)});
+      crdt.merge({'x': Record(Hlc(now + 1000000), null)});
       expect(crdt['x'].isDeleted, isTrue);
     });
   });
 
   group('Serialization', () {
-    Crdt crdt;
+    Crdt<int> crdt;
 
     setUp(() {
-      crdt = Crdt.fromMap({'x': Record<int>(Timestamp(1579633503110), 1)});
+      crdt = Crdt.fromMap({'x': Record<int>(Hlc(1579633503110), 1)});
     });
 
     test('To map', () {
-      expect(crdt.map, {'x': Record<int>(Timestamp(1579633503110), 1)});
+      expect(crdt.map, {'x': Record<int>(Hlc(1579633503110), 1)});
     });
 
     test('jsonEncode', () {
-      expect(jsonEncode(crdt.map),
-          '{"x":{"timestamp":"2020-01-21T19:05:03.110Z-0000","value":1}}');
+      expect(jsonEncode(crdt), '{"x":{"hlc":1579633475584,"value":1}}');
     });
 
     test('jsonDecode', () {
-      var jsonMap = jsonDecode(
-          '{"x":{"timestamp":"2020-01-21T19:05:03.110Z-0000","value":1}}');
+      var jsonMap = jsonDecode('{"x":{"hlc":1579633475584,"value":1}}');
       var decoded = Crdt<int>.fromJson(jsonMap);
       expect(decoded.map, crdt.map);
     });
@@ -133,25 +131,23 @@ void main() {
     Crdt crdt;
 
     setUp(() {
-      crdt = Crdt.fromMap({
-        'x': Record<TestClass>(Timestamp(1579633503110), TestClass('test'))
-      });
+      crdt = Crdt.fromMap(
+          {'x': Record<TestClass>(Hlc(1579633503110), TestClass('test'))});
     });
 
     test('To map', () {
-      expect(crdt.map, {
-        'x': Record<TestClass>(Timestamp(1579633503110), TestClass('test'))
-      });
+      expect(crdt.map,
+          {'x': Record<TestClass>(Hlc(1579633503110), TestClass('test'))});
     });
 
     test('jsonEncode', () {
       expect(jsonEncode(crdt.map),
-          '{"x":{"timestamp":"2020-01-21T19:05:03.110Z-0000","value":{"test":"test"}}}');
+          '{"x":{"hlc":1579633475584,"value":{"test":"test"}}}');
     });
 
     test('jsonDecode', () {
-      var jsonMap = jsonDecode(
-          '{"x":{"timestamp":"2020-01-21T19:05:03.110Z-0000","value":{"test":"test"}}}');
+      var jsonMap =
+          jsonDecode('{"x":{"hlc":1579633475584,"value":{"test":"test"}}}');
       var decoded = Crdt<TestClass>.fromJson(jsonMap, TestClass.fromJson);
       expect(decoded.map, crdt.map);
     });

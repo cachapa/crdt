@@ -1,94 +1,97 @@
-import 'package:crdt/src/timestamp.dart';
+import 'package:crdt/src/hlc.dart';
 import 'package:test/test.dart';
 
-var testTimestamp = Timestamp(1579633503119, 42);
+var testHlc = Hlc(1579633503119000, 42);
 
 void main() {
   group('Comparison', () {
     test('Equality', () {
-      var timestamp = Timestamp(1579633503119, 42);
-      expect(testTimestamp, timestamp);
+      var hlc = Hlc(1579633503119000, 42);
+      expect(testHlc, hlc);
     });
 
     test('Equality with different nodes', () {
-      var timestamp = Timestamp(1579633503119, 42);
-      expect(testTimestamp, timestamp);
+      var hlc = Hlc(1579633503119000, 42);
+      expect(testHlc, hlc);
     });
 
-    test('Less than timestamp', () {
-      var timestamp = Timestamp(1579633503120, 42);
-      expect(testTimestamp < timestamp, isTrue);
+    test('Less than millis', () {
+      var hlc = Hlc(1579733503119000, 42);
+      expect(testHlc < hlc, isTrue);
     });
 
     test('Less than counter', () {
-      var timestamp = Timestamp(1579633503119, 43);
-      expect(testTimestamp < timestamp, isTrue);
+      var hlc = Hlc(1579633503119000, 43);
+      expect(testHlc < hlc, isTrue);
     });
 
     test('Fail less than if equals', () {
-      var timestamp = Timestamp(1579633503120, 42);
-      expect(testTimestamp < timestamp, isTrue);
+      var hlc = Hlc(1579633503119000, 42);
+      expect(testHlc < hlc, isFalse);
     });
 
-    test('Fail less than if ts and counter disagree', () {
-      var timestamp = Timestamp(1579633503120, 43);
-      expect(testTimestamp < timestamp, isTrue);
+    test('Fail less than if millis and counter disagree', () {
+      var hlc = Hlc(1579533503119000, 43);
+      expect(testHlc < hlc, isFalse);
+    });
+  });
+
+  group('Logical time representation', () {
+    test('Hlc as logical time', () {
+      expect(testHlc.logicalTime, 1579633503109162);
+    });
+
+    test('Hlc from logical time', () {
+      expect(Hlc.fromLogicalTime(1579633503109162), testHlc);
     });
   });
 
   group('String operations', () {
-    test('Timestamp to string', () {
-      expect(testTimestamp.toString(), '2020-01-21T19:05:03.119Z-002A');
+    test('hlc to string', () {
+      expect(testHlc.toString(), '2020-01-21T19:05:03.110Z-002A');
     });
 
-    test('Parse timestamp', () {
-      expect(Timestamp.parse('2020-01-21T19:05:03.119Z-002A'), testTimestamp);
+    test('Parse hlc', () {
+      expect(Hlc.parse('2020-01-21T19:05:03.119Z-002A'), testHlc);
     });
   });
 
   group('Send', () {
     test('Send before', () {
-      var timestamp = Timestamp.send(testTimestamp, 1579633503110);
-      expect(timestamp, isNot(testTimestamp));
-      expect(timestamp.toString(), '2020-01-21T19:05:03.119Z-002B');
+      var hlc = Hlc.send(testHlc, 1579633503110000);
+      expect(hlc, isNot(testHlc));
+      expect(hlc.toString(), '2020-01-21T19:05:03.110Z-002B');
     });
 
     test('Send simultaneous', () {
-      var timestamp = Timestamp.send(testTimestamp, 1579633503119);
-      expect(timestamp, isNot(testTimestamp));
-      expect(timestamp.toString(), '2020-01-21T19:05:03.119Z-002B');
+      var hlc = Hlc.send(testHlc, 1579633503119000);
+      expect(hlc, isNot(testHlc));
+      expect(hlc.toString(), '2020-01-21T19:05:03.110Z-002B');
     });
 
     test('Send later', () {
-      var timestamp = Timestamp.send(testTimestamp, 1579633503129);
-      expect(timestamp, Timestamp(1579633503129, 0));
-      expect(timestamp.toString(), '2020-01-21T19:05:03.129Z-0000');
+      var hlc = Hlc.send(testHlc, 1579733503119000);
+      expect(hlc, Hlc(1579733503119000));
     });
   });
 
   group('Receive', () {
     test('Receive before', () {
-      var remoteTimestamp = Timestamp(1579633503110, 0);
-      var timestamp =
-          Timestamp.recv(testTimestamp, remoteTimestamp, 1579633503119);
-      expect(timestamp, isNot(equals(testTimestamp)));
-      expect(timestamp.toString(), '2020-01-21T19:05:03.119Z-002B');
+      var remoteHlc = Hlc(1579633503110000);
+      var hlc = Hlc.recv(testHlc, remoteHlc, 1579633503119000);
+      expect(hlc, isNot(equals(testHlc)));
     });
 
     test('Receive simultaneous', () {
-      var remoteTimestamp = Timestamp(1579633503119, 0);
-      var timestamp =
-          Timestamp.recv(testTimestamp, remoteTimestamp, 1579633503119);
-      expect(timestamp, isNot(testTimestamp));
-      expect(timestamp.toString(), '2020-01-21T19:05:03.119Z-002B');
+      var remoteHlc = Hlc(1579633503119000);
+      var hlc = Hlc.recv(testHlc, remoteHlc, 1579633503119000);
+      expect(hlc, isNot(testHlc));
     });
 
     test('Receive after', () {
-      var remoteTimestamp = Timestamp(1579633503119, 0);
-      var timestamp =
-          Timestamp.recv(testTimestamp, remoteTimestamp, 1579633503129);
-      expect(timestamp, isNot(testTimestamp));
-      expect(timestamp.toString(), '2020-01-21T19:05:03.129Z-0000');
+      var remoteHlc = Hlc(1579633503119000);
+      var hlc = Hlc.recv(testHlc, remoteHlc, 1579633503129000);
+      expect(hlc, isNot(testHlc));
     });
   });
 }

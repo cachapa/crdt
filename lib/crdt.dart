@@ -2,4 +2,4 @@ library crdt;
 
 export 'src/crdt.dart';
 export 'src/store.dart';
-export 'src/timestamp.dart';
+export 'src/hlc.dart';

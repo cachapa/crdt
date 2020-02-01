@@ -1,9 +1,9 @@
 import 'crdt.dart';
 
 abstract class Store<T> {
-  Record<T> operator [](String key);
+  Record<T> get(String key);
 
-  void operator []=(String key, Record<T> value);
+  void put(String key, Record<T> value);
 
   Map<String, Record<T>> get map;
 
@@ -16,10 +16,10 @@ class MapStore<T> implements Store<T> {
   MapStore(this._map);
 
   @override
-  Record<T> operator [](String key) => _map[key];
+  Record<T> get(String key) => _map[key];
 
   @override
-  void operator []=(String key, Record<T> value) => _map[key] = value;
+  void put(String key, Record<T> value) => _map[key] = value;
 
   @override
   Map<String, Record<T>> get map => _map;

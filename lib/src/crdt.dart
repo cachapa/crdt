@@ -29,26 +29,26 @@ class Crdt<T> {
 
   Map<String, Record<T>> toJson() => map;
 
-  Record<T> get(String key) => _store[key];
+  Record<T> get(String key) => _store.get(key);
 
   void put(String key, T value) {
     _canonicalTime = Hlc.send(_canonicalTime);
-    _store[key] = Record<T>(_canonicalTime, value);
+    _store.put(key, Record<T>(_canonicalTime, value));
   }
 
   dynamic delete(String key) => put(key, null);
 
   void merge(Map<String, Record<T>> remoteRecords) {
     remoteRecords.forEach((key, remoteRecord) {
-      var localRecord = _store[key];
+      var localRecord = _store.get(key);
 
       if (localRecord == null) {
         // Insert if there's no local copy
-        _store[key] = Record<T>(remoteRecord.hlc, remoteRecord.value);
+        _store.put(key, Record<T>(remoteRecord.hlc, remoteRecord.value));
       } else if (localRecord.hlc < remoteRecord.hlc) {
         // Update if local copy is older
         _canonicalTime = Hlc.recv(_canonicalTime, remoteRecord.hlc);
-        _store[key] = Record<T>(_canonicalTime, remoteRecord.value);
+        _store.put(key, Record<T>(_canonicalTime, remoteRecord.value));
       }
     });
   }

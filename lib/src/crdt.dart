@@ -1,4 +1,4 @@
-import '../crdt.dart';
+import 'hlc.dart';
 import 'store.dart';
 
 typedef Decoder<T> = T Function(Map<String, dynamic> map);
@@ -29,14 +29,14 @@ class Crdt<T> {
 
   Map<String, Record<T>> toJson() => map;
 
-  Record<T> operator [](String key) => _store[key];
+  Record<T> get(String key) => _store[key];
 
-  void operator []=(String key, T value) {
+  void put(String key, T value) {
     _canonicalTime = Hlc.send(_canonicalTime);
     _store[key] = Record<T>(_canonicalTime, value);
   }
 
-  dynamic delete(String key) => this[key] = null;
+  dynamic delete(String key) => put(key, null);
 
   void merge(Map<String, Record<T>> remoteRecords) {
     remoteRecords.forEach((key, remoteRecord) {

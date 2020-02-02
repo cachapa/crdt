@@ -1,29 +1,43 @@
+import 'dart:math';
+
+import 'package:crdt/src/hlc.dart';
+
 import 'crdt.dart';
 
 abstract class Store<T> {
-  Record<T> get(String key);
+  Hlc get latestLogicalTime;
 
-  void put(String key, Record<T> value);
+  Future<Map<String, Record<T>>> getMap([int logicalTime = 0]);
 
-  Map<String, Record<T>> get map;
+  Future<Record<T>> get(String key);
 
-  Iterable<Record<T>> get values;
+  Future<void> put(String key, Record<T> value);
+
+  Future<void> putAll(Map<String, Record<T>> values);
 }
 
 class MapStore<T> implements Store<T> {
   final Map<String, Record<T>> _map;
 
+  @override
+  Hlc get latestLogicalTime => Hlc(_map.isEmpty
+      ? 0
+      : _map.values.map((record) => record.hlc.logicalTime).reduce(max));
+
   MapStore(this._map);
 
   @override
-  Record<T> get(String key) => _map[key];
+  Future<Map<String, Record<T>>> getMap([int logicalTime = 0]) async =>
+      Map<String, Record<T>>.from(_map)
+        ..removeWhere((_, record) => record.hlc.logicalTime <= logicalTime);
 
   @override
-  void put(String key, Record<T> value) => _map[key] = value;
+  Future<Record<T>> get(String key) async => _map[key];
 
   @override
-  Map<String, Record<T>> get map => _map;
+  Future<void> put(String key, Record<T> value) async => _map[key] = value;
 
   @override
-  Iterable<Record<T>> get values => _map.values;
+  Future<void> putAll(Map<String, Record<T>> values) async =>
+      _map.addAll(values);
 }

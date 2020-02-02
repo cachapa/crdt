@@ -6,19 +6,12 @@ typedef Decoder<T> = T Function(Map<String, dynamic> map);
 class Crdt<T> {
   final Store<T> _store;
 
+  /// Represents the latest logical time seen in the stored data
   Hlc _canonicalTime;
 
-  Map<String, Record<T>> get map => _store.map;
-
   Crdt(this._store) {
-    _canonicalTime = Hlc(0);
-
-    // Seed max canonical time
-    for (var item in _store.values) {
-      if (_canonicalTime < item.hlc) {
-        _canonicalTime = item.hlc;
-      }
-    }
+    // Seed canonical time
+    _canonicalTime = _store.latestLogicalTime;
   }
 
   Crdt.fromMap(Map<String, Record<T>> map) : this(MapStore(map));
@@ -27,30 +20,36 @@ class Crdt<T> {
       : this.fromMap(map.map(
             (key, value) => MapEntry(key, Record<T>.fromJson(value, decoder))));
 
-  Map<String, Record<T>> toJson() => map;
+  Future<Map<String, Record<T>>> getMap([int logicalTime = 0]) =>
+      _store.getMap(logicalTime);
 
-  Record<T> get(String key) => _store.get(key);
+  Future<Record<T>> get(String key) => _store.get(key);
 
-  void put(String key, T value) {
+  Future<void> put(String key, T value) async {
     _canonicalTime = Hlc.send(_canonicalTime);
-    _store.put(key, Record<T>(_canonicalTime, value));
+    await _store.put(key, Record<T>(_canonicalTime, value));
   }
 
-  dynamic delete(String key) => put(key, null);
+  Future<void> delete(String key) async => put(key, null);
 
-  void merge(Map<String, Record<T>> remoteRecords) {
+  Future<void> merge(Map<String, Record<T>> remoteRecords) async {
+    var localMap = await _store.getMap();
+    var updatedRecords = <String, Record<T>>{};
+
     remoteRecords.forEach((key, remoteRecord) {
-      var localRecord = _store.get(key);
+      var localRecord = localMap[key];
 
       if (localRecord == null) {
         // Insert if there's no local copy
-        _store.put(key, Record<T>(remoteRecord.hlc, remoteRecord.value));
+        updatedRecords[key] = Record<T>(remoteRecord.hlc, remoteRecord.value);
       } else if (localRecord.hlc < remoteRecord.hlc) {
         // Update if local copy is older
         _canonicalTime = Hlc.recv(_canonicalTime, remoteRecord.hlc);
-        _store.put(key, Record<T>(_canonicalTime, remoteRecord.value));
+        updatedRecords[key] = Record<T>(_canonicalTime, remoteRecord.value);
       }
     });
+
+    await _store.putAll(updatedRecords);
   }
 
   @override

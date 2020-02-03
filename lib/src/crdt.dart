@@ -66,7 +66,9 @@ class Record<T> {
 
   Record.fromJson(Map<String, dynamic> map, [Decoder<T> decoder])
       : hlc = Hlc.fromLogicalTime(map['hlc']),
-        value = decoder == null ? map['value'] : decoder(map['value']);
+        value = decoder == null || map['value'] == null
+            ? map['value']
+            : decoder(map['value']);
 
   Map<String, dynamic> toJson() => {'hlc': hlc.logicalTime, 'value': value};
 

@@ -4,20 +4,20 @@ import 'package:crdt/src/hlc.dart';
 
 import 'crdt.dart';
 
-abstract class Store<T> {
+abstract class Store<K, V> {
   Hlc get latestLogicalTime;
 
-  Future<Map<String, Record<T>>> getMap([int logicalTime = 0]);
+  Future<Map<K, Record<V>>> getMap([int logicalTime = 0]);
 
-  Future<Record<T>> get(String key);
+  Future<Record<V>> get(K key);
 
-  Future<void> put(String key, Record<T> value);
+  Future<void> put(K key, Record<V> value);
 
-  Future<void> putAll(Map<String, Record<T>> values);
+  Future<void> putAll(Map<K, Record<V>> values);
 }
 
-class MapStore<T> implements Store<T> {
-  final Map<String, Record<T>> _map;
+class MapStore<K, V> implements Store<K, V> {
+  final Map<K, Record<V>> _map;
 
   @override
   Hlc get latestLogicalTime => Hlc(_map.isEmpty
@@ -27,17 +27,16 @@ class MapStore<T> implements Store<T> {
   MapStore(this._map);
 
   @override
-  Future<Map<String, Record<T>>> getMap([int logicalTime = 0]) async =>
-      Map<String, Record<T>>.from(_map)
+  Future<Map<K, Record<V>>> getMap([int logicalTime = 0]) async =>
+      Map<K, Record<V>>.from(_map)
         ..removeWhere((_, record) => record.hlc.logicalTime <= logicalTime);
 
   @override
-  Future<Record<T>> get(String key) async => _map[key];
+  Future<Record<V>> get(K key) async => _map[key];
 
   @override
-  Future<void> put(String key, Record<T> value) async => _map[key] = value;
+  Future<void> put(K key, Record<V> value) async => _map[key] = value;
 
   @override
-  Future<void> putAll(Map<String, Record<T>> values) async =>
-      _map.addAll(values);
+  Future<void> putAll(Map<K, Record<V>> values) async => _map.addAll(values);
 }

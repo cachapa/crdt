@@ -5,10 +5,10 @@ import 'package:test/test.dart';
 
 void main() {
   group('Basic', () {
-    Crdt crdt;
+    Crdt<String, int> crdt;
 
     setUp(() {
-      crdt = Crdt.fromMap({});
+      crdt = Crdt(MapStore({}));
     });
 
     test('Put', () async {
@@ -24,6 +24,12 @@ void main() {
       expect(record.value, 2);
     });
 
+    test('Put many', () async {
+      await crdt.putAll({'x': 2, 'y': 3});
+      expect((await crdt.get('x')).value, 2);
+      expect((await crdt.get('y')).value, 3);
+    });
+
     test('Delete value', () async {
       await crdt.put('x', 1);
       await crdt.delete('x');
@@ -36,7 +42,7 @@ void main() {
     Crdt crdt;
 
     setUp(() {
-      crdt = Crdt.fromMap({'x': Record(Hlc(), 1)});
+      crdt = Crdt(MapStore({'x': Record(Hlc(), 1)}));
     });
 
     test('Seed item', () async {
@@ -52,11 +58,11 @@ void main() {
   });
 
   group('Merge', () {
-    Crdt<int> crdt;
+    Crdt<String, int> crdt;
     var now = DateTime.now().microsecondsSinceEpoch;
 
     setUp(() {
-      crdt = Crdt.fromMap({});
+      crdt = Crdt(MapStore({}));
     });
 
     test('Merge older', () async {
@@ -118,34 +124,45 @@ void main() {
   });
 
   group('Serialization', () {
-    Crdt<int> crdt;
+    Crdt<String, int> crdt;
 
     setUp(() {
-      crdt = Crdt.fromMap({'x': Record<int>(Hlc(1579633503110), 1)});
+      crdt = Crdt(MapStore({'x': Record<int>(Hlc(1579633503110), 1)}));
     });
 
     test('To map', () async {
       expect(await crdt.getMap(), {'x': Record<int>(Hlc(1579633503110), 1)});
     });
 
-    test('jsonEncode', () async {
+    test('jsonEncodeStringKey', () async {
       expect(jsonEncode(await crdt.getMap()),
           '{"x":{"hlc":1579633475584,"value":1}}');
     });
 
-    test('jsonDecode', () async {
-      var jsonMap = jsonDecode('{"x":{"hlc":1579633475584,"value":1}}');
-      var decoded = Crdt<int>.fromJson(jsonMap);
-      expect(await decoded.getMap(), await crdt.getMap());
+    test('jsonEncodeIntKey', () async {
+      expect(crdtMap2Json({1: Record(Hlc.fromLogicalTime(1579633475584), 1)}),
+          '{"1":{"hlc":1579633475584,"value":1}}');
+    });
+
+    test('jsonDecodeStringKey', () async {
+      var map =
+          json2CrdtMap<String, int>('{"x":{"hlc":1579633475584,"value":1}}');
+      expect(map, await crdt.getMap());
+    });
+
+    test('jsonDecodeIntKey', () async {
+      var map = json2CrdtMap<int, int>('{"1":{"hlc":1579633475584,"value":1}}',
+          keyDecoder: (key) => int.parse(key));
+      expect(map, {1: Record(Hlc.fromLogicalTime(1579633475584), 1)});
     });
   });
 
   group('Custom class serialization', () {
-    Crdt crdt;
+    Crdt<String, TestClass> crdt;
 
     setUp(() {
-      crdt = Crdt.fromMap(
-          {'x': Record<TestClass>(Hlc(1579633503110), TestClass('test'))});
+      crdt = Crdt(MapStore(
+          {'x': Record<TestClass>(Hlc(1579633503110), TestClass('test'))}));
     });
 
     test('To map', () async {
@@ -159,10 +176,10 @@ void main() {
     });
 
     test('jsonDecode', () async {
-      var jsonMap =
-          jsonDecode('{"x":{"hlc":1579633475584,"value":{"test":"test"}}}');
-      var decoded = Crdt<TestClass>.fromJson(jsonMap, TestClass.fromJson);
-      expect(await decoded.getMap(), await crdt.getMap());
+      var decoded = json2CrdtMap<String, TestClass>(
+          '{"x":{"hlc":1579633475584,"value":{"test":"test"}}}',
+          valueDecoder: TestClass.fromJson);
+      expect(await decoded, await crdt.getMap());
     });
   });
 }
@@ -172,7 +189,7 @@ class TestClass {
 
   TestClass(this.test);
 
-  static TestClass fromJson(Map<String, dynamic> map) => TestClass(map['test']);
+  static TestClass fromJson(dynamic map) => TestClass(map['test']);
 
   Map<String, dynamic> toJson() => {'test': test};
 

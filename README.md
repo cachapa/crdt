@@ -18,6 +18,10 @@ main() {
 
 You'll probably want to implement [Store](https://github.com/cachapa/crdt/blob/master/lib/src/store.dart) if you want to offer any sort of persistence though.
 
+## Example
+
+An example of how it can be used in an application can be found at https://github.com/cachapa/crdt_server.
+
 ## Features and bugs
 
 Please file feature requests and bugs at the [issue tracker](https://github.com/cachapa/crdt/issues).

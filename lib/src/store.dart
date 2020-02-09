@@ -14,6 +14,8 @@ abstract class Store<K, V> {
   Future<void> put(K key, Record<V> value);
 
   Future<void> putAll(Map<K, Record<V>> values);
+
+  Future<void> clear();
 }
 
 class MapStore<K, V> implements Store<K, V> {
@@ -39,4 +41,7 @@ class MapStore<K, V> implements Store<K, V> {
 
   @override
   Future<void> putAll(Map<K, Record<V>> values) async => _map.addAll(values);
+
+  @override
+  Future<void> clear() async => _map.clear();
 }

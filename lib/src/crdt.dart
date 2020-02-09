@@ -35,6 +35,8 @@ class Crdt<K, V> {
 
   Future<void> delete(K key) async => put(key, null);
 
+  Future<void> clear() async => _store.clear();
+
   Future<void> merge(Map<K, Record<V>> remoteRecords) async {
     var localMap = await _store.getMap();
     var updatedRecords = <K, Record<V>>{};

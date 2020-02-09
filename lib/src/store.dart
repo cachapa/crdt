@@ -24,7 +24,7 @@ class MapStore<K, V> implements Store<K, V> {
       ? 0
       : _map.values.map((record) => record.hlc.logicalTime).reduce(max));
 
-  MapStore(this._map);
+  MapStore([Map<K, Record<V>> map]) : _map = map ?? <K, Record<V>>{};
 
   @override
   Future<Map<K, Record<V>>> getMap([int logicalTime = 0]) async =>

@@ -12,7 +12,7 @@ class Crdt<K, V> {
   /// Represents the latest logical time seen in the stored data
   Hlc _canonicalTime;
 
-  Crdt(this._store) {
+  Crdt([Store<K, V> store]) : _store = store ?? MapStore() {
     // Seed canonical time
     _canonicalTime = _store.latestLogicalTime;
   }

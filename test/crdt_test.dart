@@ -8,7 +8,7 @@ void main() {
     Crdt<String, int> crdt;
 
     setUp(() {
-      crdt = Crdt(MapStore({}));
+      crdt = Crdt();
     });
 
     test('Put', () async {
@@ -62,7 +62,7 @@ void main() {
     var now = DateTime.now().microsecondsSinceEpoch;
 
     setUp(() {
-      crdt = Crdt(MapStore({}));
+      crdt = Crdt();
     });
 
     test('Merge older', () async {

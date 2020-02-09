@@ -16,7 +16,7 @@ main() {
 }
 ```
 
-You'll probably want to can implement [Store](https://github.com/cachapa/crdt/blob/master/lib/src/store.dart) if you want to offer any sort of persistence though.
+You'll probably want to implement [Store](https://github.com/cachapa/crdt/blob/master/lib/src/store.dart) if you want to offer any sort of persistence though.
 
 ## Features and bugs
 

@@ -12,7 +12,7 @@ The `Crdt` class works as a layer on top of a map. The simplest way to experimen
 import 'package:crdt/crdt.dart';
 
 main() {
-  var crdt = Crtd.fromMap({});
+  var crdt = Crtd();
 }
 ```
 

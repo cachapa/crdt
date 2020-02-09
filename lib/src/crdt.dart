@@ -70,12 +70,12 @@ class Record<V> {
   Record(this.hlc, this.value);
 
   Record.fromJson(Map<String, dynamic> map, [ValueDecoder<V> decoder])
-      : hlc = Hlc.fromLogicalTime(map['hlc']),
+      : hlc = Hlc.parse(map['hlc']),
         value = decoder == null || map['value'] == null
             ? map['value']
             : decoder(map['value']);
 
-  Map<String, dynamic> toJson() => {'hlc': hlc.logicalTime, 'value': value};
+  Map<String, dynamic> toJson() => {'hlc': hlc.toJson(), 'value': value};
 
   @override
   bool operator ==(other) =>

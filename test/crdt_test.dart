@@ -136,22 +136,22 @@ void main() {
 
     test('jsonEncodeStringKey', () async {
       expect(jsonEncode(await crdt.getMap()),
-          '{"x":{"hlc":1579633475584,"value":1}}');
+          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":1}}');
     });
 
     test('jsonEncodeIntKey', () async {
       expect(crdtMap2Json({1: Record(Hlc.fromLogicalTime(1579633475584), 1)}),
-          '{"1":{"hlc":1579633475584,"value":1}}');
+          '{"1":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":1}}');
     });
 
     test('jsonDecodeStringKey', () async {
       var map =
-          json2CrdtMap<String, int>('{"x":{"hlc":1579633475584,"value":1}}');
+          json2CrdtMap<String, int>('{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":1}}');
       expect(map, await crdt.getMap());
     });
 
     test('jsonDecodeIntKey', () async {
-      var map = json2CrdtMap<int, int>('{"1":{"hlc":1579633475584,"value":1}}',
+      var map = json2CrdtMap<int, int>('{"1":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":1}}',
           keyDecoder: (key) => int.parse(key));
       expect(map, {1: Record(Hlc.fromLogicalTime(1579633475584), 1)});
     });
@@ -172,12 +172,12 @@ void main() {
 
     test('jsonEncode', () async {
       expect(jsonEncode(await crdt.getMap()),
-          '{"x":{"hlc":1579633475584,"value":{"test":"test"}}}');
+          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":{"test":"test"}}}');
     });
 
     test('jsonDecode', () async {
       var decoded = json2CrdtMap<String, TestClass>(
-          '{"x":{"hlc":1579633475584,"value":{"test":"test"}}}',
+          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":{"test":"test"}}}',
           valueDecoder: TestClass.fromJson);
       expect(await decoded, await crdt.getMap());
     });

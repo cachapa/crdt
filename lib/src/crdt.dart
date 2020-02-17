@@ -12,6 +12,13 @@ class Crdt<K, V> {
   /// Represents the latest logical time seen in the stored data
   Hlc _canonicalTime;
 
+  /// Get values as list, excluding deleted items
+  Future<List<V>> get values async => (await getMap())
+      .values
+      .where((record) => !record.isDeleted)
+      .map((record) => record.value)
+      .toList();
+
   Crdt([Store<K, V> store]) : _store = store ?? MapStore() {
     // Seed canonical time
     _canonicalTime = _store.latestLogicalTime;

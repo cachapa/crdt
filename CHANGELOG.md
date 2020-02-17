@@ -1,3 +1,7 @@
+## 1.1.1
+
+- Add values getter which retrieves all values as list, excluding deleted records
+
 ## 1.1.0
 
 - HLCs implement Comparable

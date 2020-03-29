@@ -1,3 +1,10 @@
+## 1.2.0
+
+- Breaking: `Crdt.get()` now returns the value (or `null`) rather than the record. Use `Crdt.getRecord()` for the previous behaviour.
+- API Change: Getter methods on both `Crdt` and `Store` are now synchronous.
+- Add `Crdt.watch()` and `Store.watch()` to monitor the CRDT for changes.
+- Add `Crdt.isDeleted()` to check if a key has been deleted.
+
 ## 1.1.1
 
 - Add values getter which retrieves all values as list, excluding deleted records

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:crdt/src/hlc.dart';
@@ -7,19 +8,22 @@ import 'crdt.dart';
 abstract class Store<K, V> {
   Hlc get latestLogicalTime;
 
-  Future<Map<K, Record<V>>> getMap([int logicalTime = 0]);
+  Map<K, Record<V>> getMap([int logicalTime = 0]);
 
-  Future<Record<V>> get(K key);
+  Record<V> get(K key);
 
   Future<void> put(K key, Record<V> value);
 
   Future<void> putAll(Map<K, Record<V>> values);
 
   Future<void> clear();
+
+  Stream<void> watch();
 }
 
 class MapStore<K, V> implements Store<K, V> {
   final Map<K, Record<V>> _map;
+  final _controller = StreamController<void>();
 
   @override
   Hlc get latestLogicalTime => Hlc(_map.isEmpty
@@ -29,19 +33,28 @@ class MapStore<K, V> implements Store<K, V> {
   MapStore([Map<K, Record<V>> map]) : _map = map ?? <K, Record<V>>{};
 
   @override
-  Future<Map<K, Record<V>>> getMap([int logicalTime = 0]) async =>
+  Map<K, Record<V>> getMap([int logicalTime = 0]) =>
       Map<K, Record<V>>.from(_map)
         ..removeWhere((_, record) => record.hlc.logicalTime <= logicalTime);
 
   @override
-  Future<Record<V>> get(K key) async => _map[key];
+  Record<V> get(K key) => _map[key];
 
   @override
-  Future<void> put(K key, Record<V> value) async => _map[key] = value;
+  Future<void> put(K key, Record<V> value) async {
+    _map[key] = value;
+    _controller.add(null);
+  }
 
   @override
-  Future<void> putAll(Map<K, Record<V>> values) async => _map.addAll(values);
+  Future<void> putAll(Map<K, Record<V>> values) async {
+    _map.addAll(values);
+    _controller.add(null);
+  }
 
   @override
   Future<void> clear() async => _map.clear();
+
+  @override
+  Stream<void> watch() => _controller.stream;
 }

@@ -24,10 +24,13 @@ class Crdt<K, V> {
     _canonicalTime = _store.latestLogicalTime;
   }
 
-  Future<Map<K, Record<V>>> getMap([int logicalTime = 0]) =>
-      _store.getMap(logicalTime);
+  bool isDeleted(K key) => _store.get(key)?.isDeleted;
 
-  Future<Record<V>> get(K key) => _store.get(key);
+  Map<K, Record<V>> getMap([int logicalTime = 0]) => _store.getMap(logicalTime);
+
+  V get(K key) => _store.get(key)?.value;
+
+  Record<V> getRecord(K key) => _store.get(key);
 
   Future<void> put(K key, V value) async {
     _canonicalTime = Hlc.send(_canonicalTime);
@@ -35,6 +38,8 @@ class Crdt<K, V> {
   }
 
   Future<void> putAll(Map<K, V> records) async {
+    if (records.isEmpty) return;
+
     _canonicalTime = Hlc.send(_canonicalTime);
     await _store.putAll(records.map<K, Record<V>>(
         (key, value) => MapEntry(key, Record(_canonicalTime, value))));
@@ -63,6 +68,8 @@ class Crdt<K, V> {
 
     await _store.putAll(updatedRecords);
   }
+
+  Stream<void> watch() => _store.watch();
 
   @override
   String toString() => _store.toString();

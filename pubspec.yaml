@@ -10,5 +10,5 @@ dependencies:
   # no dependencies, no problems
 
 dev_dependencies:
-  pedantic: ^1.8.0
+  pedantic: ^1.9.0
   test: ^1.6.0

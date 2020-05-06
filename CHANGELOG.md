@@ -2,8 +2,9 @@
 
 - Breaking: `Crdt.get()` now returns the value (or `null`) rather than the record. Use `Crdt.getRecord()` for the previous behaviour.
 - API Change: Getter methods on both `Crdt` and `Store` are now synchronous.
+- API Change: `Crdt.Clear()` now accepts `purgeRecords` to determine if records should be purged or marked as deleted.
 - Add `Crdt.watch()` and `Store.watch()` to monitor the CRDT for changes.
-- Add `Crdt.isDeleted()` to check if a key has been deleted.
+- Add `Crdt.isDeleted()` to check if a record has been deleted.
 
 ## 1.1.1
 

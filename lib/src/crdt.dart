@@ -45,9 +45,18 @@ class Crdt<K, V> {
         (key, value) => MapEntry(key, Record(_canonicalTime, value))));
   }
 
-  Future<void> delete(K key) async => put(key, null);
+  Future<void> delete(K key) => put(key, null);
 
-  Future<void> clear() async => _store.clear();
+  /// Clears all records in the CRDT
+  /// Setting [purgeRecords] true purges the entire database, otherwise records
+  /// are marked as deleted allowing the changes to propagate to all clients.
+  Future<void> clear({bool purgeRecords = false}) async {
+    if (purgeRecords) {
+      await _store.clear();
+    } else {
+      await putAll(_store.getMap().map((key, value) => MapEntry(key, null)));
+    }
+  }
 
   Future<void> merge(Map<K, Record<V>> remoteRecords) async {
     var localMap = await _store.getMap();

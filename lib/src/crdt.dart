@@ -13,7 +13,7 @@ class Crdt<K, V> {
   Hlc _canonicalTime;
 
   /// Get values as list, excluding deleted items
-  Future<List<V>> get values async => (await getMap())
+  List<V> get values => getMap()
       .values
       .where((record) => !record.isDeleted)
       .map((record) => record.value)

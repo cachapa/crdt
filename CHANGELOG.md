@@ -1,3 +1,7 @@
+## 1.2.1
+
+- Remove unnecessary Future in `Crdt.entries` getter.
+
 ## 1.2.0
 
 - Breaking: `Crdt.get()` now returns the value (or `null`) rather than the record. Use `Crdt.getRecord()` for the previous behaviour.

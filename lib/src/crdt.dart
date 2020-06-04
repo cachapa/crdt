@@ -71,7 +71,7 @@ class Crdt<K, V> {
       } else if (localRecord.hlc < remoteRecord.hlc) {
         // Update if local copy is older
         _canonicalTime = Hlc.recv(_canonicalTime, remoteRecord.hlc);
-        updatedRecords[key] = Record<V>(_canonicalTime, remoteRecord.value);
+        updatedRecords[key] = remoteRecord;
       }
     });
 

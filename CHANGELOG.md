@@ -1,6 +1,11 @@
+## 1.2.2
+
+- Fix incrementing the HLC when merging newer records.
+- Fix counter not being able to reach maximum (0xFFFF)
+
 ## 1.2.1
 
-- Remove unnecessary Future in `Crdt.entries` getter.
+- Remove unnecessary Future in `Crdt.values` getter.
 
 ## 1.2.0
 

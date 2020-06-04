@@ -20,7 +20,7 @@ class Hlc implements Comparable<Hlc> {
       : logicalTime =
             ((micros ?? DateTime.now().microsecondsSinceEpoch) & _microsMask) +
                 counter,
-        assert(counter < _maxCounter);
+        assert(counter <= _maxCounter);
 
   Hlc.fromLogicalTime(this.logicalTime);
 

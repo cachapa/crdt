@@ -79,19 +79,34 @@ void main() {
     test('Receive before', () {
       var remoteHlc = Hlc(1579633503110000);
       var hlc = Hlc.recv(testHlc, remoteHlc, 1579633503119000);
-      expect(hlc, isNot(equals(testHlc)));
+      expect(hlc > testHlc, isTrue);
+      expect(hlc > remoteHlc, isTrue);
     });
 
     test('Receive simultaneous', () {
       var remoteHlc = Hlc(1579633503119000);
       var hlc = Hlc.recv(testHlc, remoteHlc, 1579633503119000);
-      expect(hlc, isNot(testHlc));
+      expect(hlc > testHlc, isTrue);
+      expect(hlc > remoteHlc, isTrue);
     });
 
     test('Receive after', () {
       var remoteHlc = Hlc(1579633503119000);
       var hlc = Hlc.recv(testHlc, remoteHlc, 1579633503129000);
-      expect(hlc, isNot(testHlc));
+      expect(hlc > testHlc, isTrue);
+      expect(hlc > remoteHlc, isTrue);
+    });
+
+    test('Fail on clock drift', () {
+      var remoteHlc = Hlc(1579633503119000);
+      expect(() => Hlc.recv(testHlc, remoteHlc, 1579633403129000),
+          throwsA(isA<ClockDriftException>()));
+    });
+
+    test('Fail on counter overflow', () {
+      var remoteHlc = Hlc(1579633503119000, 0xFFFF);
+      expect(() => Hlc.recv(testHlc, remoteHlc, 1579633503119000),
+          throwsA(isA<OverflowException>()));
     });
   });
 }

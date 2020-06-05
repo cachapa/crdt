@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:crdt/src/hlc.dart';
 
@@ -26,9 +25,9 @@ class MapStore<K, V> implements Store<K, V> {
   final _controller = StreamController<void>();
 
   @override
-  Hlc get latestLogicalTime => Hlc(_map.isEmpty
-      ? 0
-      : _map.values.map((record) => record.hlc.logicalTime).reduce(max));
+  Hlc get latestLogicalTime => _map.isEmpty
+      ? null
+      : _map.values.map((record) => record.hlc).reduce((a, b) => a > b ? a : b);
 
   MapStore([Map<K, Record<V>> map]) : _map = map ?? <K, Record<V>>{};
 

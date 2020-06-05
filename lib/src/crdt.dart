@@ -7,6 +7,7 @@ typedef KeyDecoder<K> = K Function(String key);
 typedef ValueDecoder<V> = V Function(dynamic value);
 
 class Crdt<K, V> {
+  final String nodeId;
   final Store<K, V> _store;
 
   /// Represents the latest logical time seen in the stored data
@@ -19,9 +20,10 @@ class Crdt<K, V> {
       .map((record) => record.value)
       .toList();
 
-  Crdt([Store<K, V> store]) : _store = store ?? MapStore() {
+  Crdt(this.nodeId, [Store<K, V> store]) : _store = store ?? MapStore() {
     // Seed canonical time
-    _canonicalTime = _store.latestLogicalTime;
+    _canonicalTime =
+        _store.latestLogicalTime?.apply(nodeId: nodeId) ?? Hlc.zero(nodeId);
   }
 
   bool isDeleted(K key) => _store.get(key)?.isDeleted;

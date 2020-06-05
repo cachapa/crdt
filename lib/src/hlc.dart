@@ -11,43 +11,54 @@ const _maxDrift = 60000000; // 1h in µs
 /// Inspiration: https://cse.buffalo.edu/tech-reports/2014-04.pdf
 class Hlc implements Comparable<Hlc> {
   final int logicalTime;
+  final String nodeId;
 
   int get micros => logicalTime & _microsMask;
 
   int get counter => logicalTime & _counterMask;
 
-  Hlc([int micros, int counter = 0])
-      : logicalTime =
-            ((micros ?? DateTime.now().microsecondsSinceEpoch) & _microsMask) +
-                counter,
-        assert(counter <= _maxCounter);
+  Hlc(int micros, int counter, this.nodeId)
+      : logicalTime = (micros & _microsMask) + counter,
+        assert(counter <= _maxCounter),
+        assert(nodeId != null);
 
-  Hlc.fromLogicalTime(this.logicalTime);
+  Hlc.zero(String nodeId) : this(0, 0, nodeId);
+
+  Hlc.now(String nodeId)
+      : this(DateTime.now().microsecondsSinceEpoch, 0, nodeId);
+
+  Hlc.fromLogicalTime(this.logicalTime, this.nodeId);
 
   factory Hlc.parse(String timestamp) {
-    var lastDash = timestamp.lastIndexOf('-');
-    var micros =
-        DateTime.parse(timestamp.substring(0, lastDash)).microsecondsSinceEpoch;
-    var counter = int.parse(timestamp.substring(lastDash + 1), radix: 16);
-    return Hlc(micros, counter);
+    final counterDash = timestamp.indexOf('-', timestamp.lastIndexOf(':'));
+    final nodeIdDash = timestamp.indexOf('-', counterDash + 1);
+    final micros = DateTime.parse(timestamp.substring(0, counterDash))
+        .microsecondsSinceEpoch;
+    final counter =
+        int.parse(timestamp.substring(counterDash + 1, nodeIdDash), radix: 16);
+    final nodeId = timestamp.substring(nodeIdDash + 1);
+    return Hlc(micros, counter, nodeId);
   }
 
+  Hlc apply({int micros, int counter, String nodeId}) => Hlc(
+      micros ?? this.micros, counter ?? this.counter, nodeId ?? this.nodeId);
+
   /// Generates a unique, monotonic timestamp suitable for transmission to
-  /// another system in string format. Local wall time will be used if [micros]
-  /// isn't supplied, useful for testing.
-  factory Hlc.send(Hlc timestamp, [int micros]) {
+  /// another system in string format. Local wall time will be used if
+  /// [micros] isn't supplied.
+  factory Hlc.send(Hlc canonical, {int micros}) {
     // Retrieve the local wall time if micros is null
     micros = (micros ?? DateTime.now().microsecondsSinceEpoch) & _microsMask;
 
-    // Unpack the timestamp's time and counter
-    var microsOld = timestamp.micros;
-    var counterOld = timestamp.counter;
+    // Unpack the canonical time and counter
+    final microsOld = canonical.micros;
+    final counterOld = canonical.counter;
 
-    // Calculate the next logical time and counter
+    // Calculate the next time and counter
     // * ensure that the logical time never goes backward
-    // * increment the counter if phys time does not advance
-    var microsNew = max(microsOld, micros);
-    var counterNew = microsOld == microsNew ? counterOld + 1 : 0;
+    // * increment the counter if time does not advance
+    final microsNew = max(microsOld, micros);
+    final counterNew = microsOld == microsNew ? counterOld + 1 : 0;
 
     // Check the result for drift and counter overflow
     if (microsNew - micros > _maxDrift) {
@@ -57,52 +68,35 @@ class Hlc implements Comparable<Hlc> {
       throw OverflowException(counterNew);
     }
 
-    return Hlc(microsNew, counterNew);
+    return Hlc(microsNew, counterNew, canonical.nodeId);
   }
 
-  /// Parses and merges a timestamp from a remote system with the local
-  /// canonical timestamp to preserve monotonicity. Returns an updated canonical
-  /// timestamp instance. Local wall time will be used if [micros] isn't
-  /// supplied, useful for testing.
-  factory Hlc.recv(Hlc local, Hlc remote, [int micros]) {
+  /// Compares and validates a timestamp from a remote system with the local
+  /// canonical timestamp to preserve monotonicity.
+  /// Returns an updated canonical timestamp instance.
+  /// Local wall time will be used if [micros] isn't supplied.
+  factory Hlc.recv(Hlc canonical, Hlc remote, {int micros}) {
+    // Assert the node id
+    if (canonical.nodeId != null && canonical.nodeId == remote.nodeId) {
+      throw DuplicateNodeException(canonical.nodeId);
+    }
+
+    // No need to do any more work if local is more recent
+    if (canonical >= remote) return canonical;
+
     // Retrieve the local wall time if micros is null
     micros = (micros ?? DateTime.now().microsecondsSinceEpoch) & _microsMask;
 
-    // Unpack the remote's time and counter
-    var microsRemote = remote.micros;
-    var counterRemote = remote.counter;
+    // Unpack remote micros and counter
+    final microsRemote = remote.micros;
+    final counterRemote = remote.counter;
 
-    // Assert remote clock drift
+    // Assert the remote clock drift
     if (microsRemote - micros > _maxDrift) {
       throw ClockDriftException(microsRemote, micros);
     }
 
-    // Unpack the clock.timestamp logical time and counter
-    var microsLocal = local.micros;
-    var counterLocal = local.counter;
-
-    // Calculate the next logical time and counter.
-    // Ensure that the logical time never goes backward;
-    // * if all logical clocks are equal, increment the max counter,
-    // * if max = old > message, increment local counter,
-    // * if max = message > old, increment message counter,
-    // * otherwise, clocks are monotonic, reset counter
-    var microsNew = max(max(microsLocal, micros), microsRemote);
-    var counterNew = microsNew == microsLocal && microsNew == microsRemote
-        ? max(counterLocal, counterRemote) + 1
-        : microsNew == microsLocal
-            ? counterLocal + 1
-            : microsNew == microsRemote ? counterRemote + 1 : 0;
-
-    // Check the result for drift and counter overflow
-    if (microsNew - micros > _maxDrift) {
-      throw ClockDriftException(microsNew, micros);
-    }
-    if (counterNew > _maxCounter) {
-      throw OverflowException(counterNew);
-    }
-
-    return Hlc(microsNew, counterNew);
+    return Hlc(microsRemote, counterRemote, canonical.nodeId);
   }
 
   String toJson() => toString();
@@ -110,25 +104,39 @@ class Hlc implements Comparable<Hlc> {
   @override
   String toString() =>
       '${DateTime.fromMillisecondsSinceEpoch((micros / 1000).ceil(), isUtc: true).toIso8601String()}'
-      '-'
-      '${counter.toRadixString(16).toUpperCase().padLeft(4, '0')}';
+      '-${counter.toRadixString(16).toUpperCase().padLeft(4, '0')}'
+      '-$nodeId';
 
   @override
   int get hashCode => toString().hashCode;
 
   @override
-  bool operator ==(other) => other is Hlc && logicalTime == other.logicalTime;
+  bool operator ==(other) =>
+      other is Hlc &&
+      logicalTime == other.logicalTime &&
+      nodeId == other.nodeId;
 
-  bool operator <(other) => other is Hlc && logicalTime < other.logicalTime;
+  bool operator <(other) =>
+      other is Hlc &&
+      (logicalTime < other.logicalTime ||
+          logicalTime == other.logicalTime &&
+              nodeId.compareTo(other.nodeId) < 0);
 
-  bool operator <=(other) => other is Hlc && logicalTime <= other.logicalTime;
+  bool operator <=(other) => this < other || this == other;
 
-  bool operator >(other) => other is Hlc && logicalTime > other.logicalTime;
+  bool operator >(other) =>
+      other is Hlc &&
+      (logicalTime > other.logicalTime ||
+          logicalTime == other.logicalTime &&
+              nodeId.compareTo(other.nodeId) > 0);
 
-  bool operator >=(other) => other is Hlc && logicalTime >= other.logicalTime;
+  bool operator >=(other) => this > other || this == other;
 
   @override
-  int compareTo(Hlc other) => logicalTime.compareTo(other.logicalTime);
+  int compareTo(Hlc other) {
+    final time = logicalTime.compareTo(other.logicalTime);
+    return time == 0 ? nodeId.compareTo(other.nodeId) : time;
+  }
 }
 
 class ClockDriftException implements Exception {
@@ -138,7 +146,7 @@ class ClockDriftException implements Exception {
       : drift = microsTs - microsWall;
 
   @override
-  String toString() => 'Clock drift of $drift ms exceeds maximum ($_maxDrift).';
+  String toString() => 'Clock drift of $drift ms exceeds maximum ($_maxDrift)';
 }
 
 class OverflowException implements Exception {
@@ -147,5 +155,14 @@ class OverflowException implements Exception {
   OverflowException(this.counter);
 
   @override
-  String toString() => 'Timestamp counter overflow: $counter.';
+  String toString() => 'Timestamp counter overflow: $counter';
+}
+
+class DuplicateNodeException implements Exception {
+  final String nodeId;
+
+  DuplicateNodeException(this.nodeId);
+
+  @override
+  String toString() => 'Duplicate node: $nodeId';
 }

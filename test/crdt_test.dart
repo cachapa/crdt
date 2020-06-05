@@ -8,7 +8,7 @@ void main() {
     Crdt<String, int> crdt;
 
     setUp(() {
-      crdt = Crdt();
+      crdt = Crdt('abc');
     });
 
     test('Put', () async {
@@ -41,7 +41,7 @@ void main() {
     Crdt crdt;
 
     setUp(() {
-      crdt = Crdt(MapStore({'x': Record(Hlc(), 1)}));
+      crdt = Crdt('abc', MapStore({'x': Record(Hlc.now('abc'), 1)}));
     });
 
     test('Seed item', () {
@@ -61,26 +61,26 @@ void main() {
     var now = DateTime.now().microsecondsSinceEpoch;
 
     setUp(() {
-      crdt = Crdt();
+      crdt = Crdt('abc');
     });
 
     test('Merge older', () async {
       await crdt.put('x', 2);
-      await crdt.merge({'x': Record(Hlc(now - 10000), 1)});
+      await crdt.merge({'x': Record(Hlc(now - 10000, 0, 'abc'), 1)});
       var value = crdt.get('x');
       expect(value, 2);
     });
 
     test('Merge very old', () async {
       await crdt.put('x', 2);
-      await crdt.merge({'x': Record(Hlc(now - 1000000), 1)});
+      await crdt.merge({'x': Record(Hlc(now - 1000000, 0, 'abc'), 1)});
       var value = crdt.get('x');
       expect(value, 2);
     });
 
     test('Merge newer', () async {
       await crdt.put('x', 1);
-      await crdt.merge({'x': Record(Hlc(now + 1000000), 2)});
+      await crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), 2)});
       var value = crdt.get('x');
       expect(value, 2);
     });
@@ -95,28 +95,28 @@ void main() {
 
     test('Merge older, newer counter', () async {
       await crdt.put('x', 2);
-      await crdt.merge({'x': Record(Hlc(now - 1000000, 2), 1)});
+      await crdt.merge({'x': Record(Hlc(now - 1000000, 2, 'abc'), 1)});
       var value = crdt.get('x');
       expect(value, 2);
     });
 
     test('Merge same, newer counter', () async {
       await crdt.put('x', 1);
-      var remoteTs = Hlc(crdt.getRecord('x').hlc.micros, 2);
+      var remoteTs = Hlc(crdt.getRecord('x').hlc.micros, 2, 'xyz');
       await crdt.merge({'x': Record(remoteTs, 2)});
       var value = crdt.get('x');
       expect(value, 2);
     });
 
     test('Merge new item', () async {
-      var map = {'x': Record<int>(Hlc(), 2)};
+      var map = {'x': Record<int>(Hlc.now('abc'), 2)};
       await crdt.merge(map);
       expect(crdt.getMap(), map);
     });
 
     test('Merge deleted item', () async {
       await crdt.put('x', 1);
-      await crdt.merge({'x': Record(Hlc(now + 1000000), null)});
+      await crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), null)});
       expect(crdt.isDeleted('x'), isTrue);
     });
   });
@@ -125,34 +125,38 @@ void main() {
     Crdt<String, int> crdt;
 
     setUp(() {
-      crdt = Crdt(MapStore({'x': Record<int>(Hlc(1579633503110), 1)}));
+      crdt = Crdt(
+          'abc', MapStore({'x': Record<int>(Hlc(1579633503110, 0, 'abc'), 1)}));
     });
 
     test('To map', () {
-      expect(crdt.getMap(), {'x': Record<int>(Hlc(1579633503110), 1)});
+      expect(
+          crdt.getMap(), {'x': Record<int>(Hlc(1579633503110, 0, 'abc'), 1)});
     });
 
     test('jsonEncodeStringKey', () {
       expect(jsonEncode(crdt.getMap()),
-          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":1}}');
+          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000-abc","value":1}}');
     });
 
     test('jsonEncodeIntKey', () {
-      expect(crdtMap2Json({1: Record(Hlc.fromLogicalTime(1579633475584), 1)}),
-          '{"1":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":1}}');
+      expect(
+          crdtMap2Json(
+              {1: Record(Hlc.fromLogicalTime(1579633475584, 'abc'), 1)}),
+          '{"1":{"hlc":"1970-01-19T06:47:13.476Z-0000-abc","value":1}}');
     });
 
     test('jsonDecodeStringKey', () {
       var map = json2CrdtMap<String, int>(
-          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":1}}');
+          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000-abc","value":1}}');
       expect(map, crdt.getMap());
     });
 
     test('jsonDecodeIntKey', () {
       var map = json2CrdtMap<int, int>(
-          '{"1":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":1}}',
+          '{"1":{"hlc":"1970-01-19T06:47:13.476Z-0000-abc","value":1}}',
           keyDecoder: (key) => int.parse(key));
-      expect(map, {1: Record(Hlc.fromLogicalTime(1579633475584), 1)});
+      expect(map, {1: Record(Hlc.fromLogicalTime(1579633475584, 'abc'), 1)});
     });
   });
 
@@ -160,23 +164,28 @@ void main() {
     Crdt<String, TestClass> crdt;
 
     setUp(() {
-      crdt = Crdt(MapStore(
-          {'x': Record<TestClass>(Hlc(1579633503110), TestClass('test'))}));
+      crdt = Crdt(
+          'abc',
+          MapStore({
+            'x': Record<TestClass>(
+                Hlc(1579633503110, 0, 'abc'), TestClass('test'))
+          }));
     });
 
     test('To map', () {
-      expect(crdt.getMap(),
-          {'x': Record<TestClass>(Hlc(1579633503110), TestClass('test'))});
+      expect(crdt.getMap(), {
+        'x': Record<TestClass>(Hlc(1579633503110, 0, 'abc'), TestClass('test'))
+      });
     });
 
     test('jsonEncode', () {
       expect(jsonEncode(crdt.getMap()),
-          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":{"test":"test"}}}');
+          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000-abc","value":{"test":"test"}}}');
     });
 
     test('jsonDecode', () {
       var decoded = json2CrdtMap<String, TestClass>(
-          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000","value":{"test":"test"}}}',
+          '{"x":{"hlc":"1970-01-19T06:47:13.476Z-0000-abc","value":{"test":"test"}}}',
           valueDecoder: TestClass.fromJson);
       expect(decoded, crdt.getMap());
     });

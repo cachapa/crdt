@@ -67,11 +67,8 @@ class Crdt<K, V> {
     remoteRecords.forEach((key, remoteRecord) {
       var localRecord = localMap[key];
 
-      if (localRecord == null) {
-        // Insert if there's no local copy
-        updatedRecords[key] = Record<V>(remoteRecord.hlc, remoteRecord.value);
-      } else if (localRecord.hlc < remoteRecord.hlc) {
-        // Update if local copy is older
+      // Keep record if there's no local copy, or if local is older
+      if (localRecord == null || localRecord.hlc < remoteRecord.hlc) {
         _canonicalTime = Hlc.recv(_canonicalTime, remoteRecord.hlc);
         updatedRecords[key] = remoteRecord;
       }

@@ -5,20 +5,24 @@ const _counterMask = 0xFFFF;
 const _maxCounter = _counterMask;
 const _maxDrift = 60000000; // 1h in µs
 
+// Used to disambiguate otherwise equal HLCs deterministically.
+// In this case, node ids with a lower string comparison win.
+Comparator<String> _idDisambiguator = (s1, s2) => s2.compareTo(s1);
+
 /// A Hybrid Logical Clock implementation.
 /// This class trades time precision for a guaranteed monotonically increasing
 /// clock in distributed systems.
 /// Inspiration: https://cse.buffalo.edu/tech-reports/2014-04.pdf
 class Hlc implements Comparable<Hlc> {
-  final int logicalTime;
+  final int micros;
+  final int counter;
+
   final String nodeId;
 
-  int get micros => logicalTime & _microsMask;
+  int get logicalTime => (micros & _microsMask) + counter;
 
-  int get counter => logicalTime & _counterMask;
-
-  Hlc(int micros, int counter, this.nodeId)
-      : logicalTime = (micros & _microsMask) + counter,
+  Hlc(int micros, this.counter, this.nodeId)
+      : micros = micros & _microsMask,
         assert(counter <= _maxCounter),
         assert(nodeId != null);
 
@@ -27,7 +31,8 @@ class Hlc implements Comparable<Hlc> {
   Hlc.now(String nodeId)
       : this(DateTime.now().microsecondsSinceEpoch, 0, nodeId);
 
-  Hlc.fromLogicalTime(this.logicalTime, this.nodeId);
+  Hlc.fromLogicalTime(logicalTime, String nodeId)
+      : this(logicalTime & _microsMask, logicalTime & _counterMask, nodeId);
 
   factory Hlc.parse(String timestamp) {
     final counterDash = timestamp.indexOf('-', timestamp.lastIndexOf(':'));
@@ -87,23 +92,19 @@ class Hlc implements Comparable<Hlc> {
     // Retrieve the local wall time if micros is null
     micros = (micros ?? DateTime.now().microsecondsSinceEpoch) & _microsMask;
 
-    // Unpack remote micros and counter
-    final microsRemote = remote.micros;
-    final counterRemote = remote.counter;
-
     // Assert the remote clock drift
-    if (microsRemote - micros > _maxDrift) {
-      throw ClockDriftException(microsRemote, micros);
+    if (remote.micros - micros > _maxDrift) {
+      throw ClockDriftException(remote.micros, micros);
     }
 
-    return Hlc(microsRemote, counterRemote, canonical.nodeId);
+    return remote.apply(nodeId: canonical.nodeId);
   }
 
   String toJson() => toString();
 
   @override
   String toString() =>
-      '${DateTime.fromMillisecondsSinceEpoch((micros / 1000).ceil(), isUtc: true).toIso8601String()}'
+      '${DateTime.fromMicrosecondsSinceEpoch(micros, isUtc: true).toIso8601String()}'
       '-${counter.toRadixString(16).toUpperCase().padLeft(4, '0')}'
       '-$nodeId';
 
@@ -120,7 +121,7 @@ class Hlc implements Comparable<Hlc> {
       other is Hlc &&
       (logicalTime < other.logicalTime ||
           logicalTime == other.logicalTime &&
-              nodeId.compareTo(other.nodeId) < 0);
+              _idDisambiguator(nodeId, other.nodeId) < 0);
 
   bool operator <=(other) => this < other || this == other;
 
@@ -128,14 +129,14 @@ class Hlc implements Comparable<Hlc> {
       other is Hlc &&
       (logicalTime > other.logicalTime ||
           logicalTime == other.logicalTime &&
-              nodeId.compareTo(other.nodeId) > 0);
+              _idDisambiguator(nodeId, other.nodeId) > 0);
 
   bool operator >=(other) => this > other || this == other;
 
   @override
   int compareTo(Hlc other) {
     final time = logicalTime.compareTo(other.logicalTime);
-    return time == 0 ? nodeId.compareTo(other.nodeId) : time;
+    return time == 0 ? _idDisambiguator(nodeId, other.nodeId) : time;
   }
 }
 

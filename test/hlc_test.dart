@@ -4,8 +4,8 @@ import 'package:test/test.dart';
 void main() {
   group('String operations', () {
     test('hlc to string', () {
-      var hlc = Hlc.parse('2020-01-01T10:00:00.089Z-0042-abc');
-      expect(hlc.toString(), '2020-01-01T10:00:00.089Z-0042-abc');
+      var hlc = Hlc.parse('2020-01-01T10:00:00.088064Z-0042-abc');
+      expect(hlc.toString(), '2020-01-01T10:00:00.088064Z-0042-abc');
     });
 
     test('Parse hlc', () {
@@ -46,8 +46,8 @@ void main() {
     test('Less than node id', () {
       var hlc1 = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abc');
       var hlc2 = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abd');
-      expect(hlc1 < hlc2, isTrue);
-      expect(hlc1 <= hlc2, isTrue);
+      expect(hlc1 > hlc2, isTrue);
+      expect(hlc1 >= hlc2, isTrue);
     });
 
     test('Fail less than if equals', () {
@@ -89,11 +89,11 @@ void main() {
 
       expect(hlc.compareTo(Hlc.parse('2020-01-21T19:05:03.210Z-0042-abc')), -1);
       expect(hlc.compareTo(Hlc.parse('2020-01-21T19:05:03.110Z-0043-abc')), -1);
-      expect(hlc.compareTo(Hlc.parse('2020-01-21T19:05:03.110Z-0042-abd')), -1);
+      expect(hlc.compareTo(Hlc.parse('2020-01-21T19:05:03.110Z-0042-abb')), -1);
 
       expect(hlc.compareTo(Hlc.parse('2020-01-21T19:05:03.010Z-0042-abc')), 1);
       expect(hlc.compareTo(Hlc.parse('2020-01-21T19:05:03.110Z-0041-abc')), 1);
-      expect(hlc.compareTo(Hlc.parse('2020-01-21T19:05:03.110Z-0042-abb')), 1);
+      expect(hlc.compareTo(Hlc.parse('2020-01-21T19:05:03.110Z-0042-abd')), 1);
     });
   });
 

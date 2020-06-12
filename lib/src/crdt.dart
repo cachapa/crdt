@@ -8,11 +8,12 @@ typedef KeyDecoder<K> = K Function(String key);
 typedef ValueDecoder<V> = V Function(dynamic value);
 
 class CrdtMap<K, V> extends MapBase<K, V> {
-  final String nodeId;
-  final Store<K, V> _store;
+  final Store<K, V> store;
 
   /// Represents the latest logical time seen in the stored data
   Hlc _canonicalTime;
+
+  String get nodeId => store.nodeId;
 
   @override
   Iterable<K> get keys => getMap().keys;
@@ -25,25 +26,25 @@ class CrdtMap<K, V> extends MapBase<K, V> {
       .map((record) => record.value)
       .toList();
 
-  CrdtMap(this.nodeId, [Store<K, V> store]) : _store = store ?? MapStore() {
+  CrdtMap(this.store) {
     // Seed canonical time
     _canonicalTime =
-        _store.latestLogicalTime?.apply(nodeId: nodeId) ?? Hlc.zero(nodeId);
+        store.latestLogicalTime?.apply(nodeId: nodeId) ?? Hlc.zero(nodeId);
   }
 
-  bool isDeleted(K key) => _store.get(key)?.isDeleted;
+  bool isDeleted(K key) => store.get(key)?.isDeleted;
 
-  Map<K, Record<V>> getMap([int logicalTime = 0]) => _store.getMap(logicalTime);
+  Map<K, Record<V>> getMap([int logicalTime = 0]) => store.getMap(logicalTime);
 
   @override
-  V operator [](Object key) => _store.get(key)?.value;
+  V operator [](Object key) => store.get(key)?.value;
 
-  Record<V> getRecord(K key) => _store.get(key);
+  Record<V> getRecord(K key) => store.get(key);
 
   @override
   void operator []=(K key, V value) {
     _canonicalTime = Hlc.send(_canonicalTime);
-    _store.put(key, Record<V>(_canonicalTime, value));
+    store.put(key, Record<V>(_canonicalTime, value));
   }
 
   @override
@@ -51,7 +52,7 @@ class CrdtMap<K, V> extends MapBase<K, V> {
     if (records.isEmpty) return;
 
     _canonicalTime = Hlc.send(_canonicalTime);
-    _store.putAll(records.map<K, Record<V>>(
+    store.putAll(records.map<K, Record<V>>(
         (key, value) => MapEntry(key, Record(_canonicalTime, value))));
   }
 
@@ -62,16 +63,16 @@ class CrdtMap<K, V> extends MapBase<K, V> {
   /// Setting [purgeRecords] true purges the entire database, otherwise records
   /// are marked as deleted allowing the changes to propagate to all clients.
   @override
-  Future<void> clear({bool purgeRecords = false}) {
+  void clear({bool purgeRecords = false}) {
     if (purgeRecords) {
-      _store.clear();
+      store.clear();
     } else {
-      addAll(_store.getMap().map((key, value) => MapEntry(key, null)));
+      addAll(store.getMap().map((key, value) => MapEntry(key, null)));
     }
   }
 
   void merge(Map<K, Record<V>> remoteRecords) {
-    final localMap = _store.getMap();
+    final localMap = store.getMap();
     final updatedRecords = <K, Record<V>>{};
 
     remoteRecords.forEach((key, remoteRecord) {
@@ -84,13 +85,13 @@ class CrdtMap<K, V> extends MapBase<K, V> {
       }
     });
 
-    _store.putAll(updatedRecords);
+    store.putAll(updatedRecords);
   }
 
-  Stream<void> watch() => _store.watch();
+  Stream<void> watch() => store.watch();
 
   @override
-  String toString() => _store.toString();
+  String toString() => store.toString();
 }
 
 class Record<V> {

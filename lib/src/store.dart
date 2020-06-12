@@ -5,6 +5,8 @@ import 'package:crdt/src/hlc.dart';
 import 'crdt.dart';
 
 abstract class Store<K, V> {
+  String get nodeId;
+
   Hlc get latestLogicalTime;
 
   Map<K, Record<V>> getMap([int logicalTime = 0]);
@@ -21,6 +23,8 @@ abstract class Store<K, V> {
 }
 
 class MapStore<K, V> implements Store<K, V> {
+  @override
+  final String nodeId;
   final Map<K, Record<V>> _map;
   final _controller = StreamController<void>();
 
@@ -29,7 +33,8 @@ class MapStore<K, V> implements Store<K, V> {
       ? null
       : _map.values.map((record) => record.hlc).reduce((a, b) => a > b ? a : b);
 
-  MapStore([Map<K, Record<V>> map]) : _map = map ?? <K, Record<V>>{};
+  MapStore(this.nodeId, [Map<K, Record<V>> map])
+      : _map = map ?? <K, Record<V>>{};
 
   @override
   Map<K, Record<V>> getMap([int logicalTime = 0]) =>

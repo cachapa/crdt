@@ -1,7 +1,7 @@
 import 'package:crdt/crdt.dart';
 
 void main() {
-  var crdt = Crdt('node_id', MapStore({}));
-  crdt.put('a', 1);
-  print(crdt.get('a')); // 1
+  var crdt = CrdtMap('node_id', MapStore({}));
+  crdt['a'] = 1;
+  print(crdt['a']); // 1
 }

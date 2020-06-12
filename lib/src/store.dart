@@ -11,11 +11,11 @@ abstract class Store<K, V> {
 
   Record<V> get(K key);
 
-  Future<void> put(K key, Record<V> value);
+  void put(K key, Record<V> value);
 
-  Future<void> putAll(Map<K, Record<V>> values);
+  void putAll(Map<K, Record<V>> values);
 
-  Future<void> clear();
+  void clear();
 
   Stream<void> watch();
 }
@@ -40,19 +40,19 @@ class MapStore<K, V> implements Store<K, V> {
   Record<V> get(K key) => _map[key];
 
   @override
-  Future<void> put(K key, Record<V> value) async {
+  void put(K key, Record<V> value) async {
     _map[key] = value;
     _controller.add(null);
   }
 
   @override
-  Future<void> putAll(Map<K, Record<V>> values) async {
+  void putAll(Map<K, Record<V>> values) async {
     _map.addAll(values);
     _controller.add(null);
   }
 
   @override
-  Future<void> clear() async => _map.clear();
+  void clear() async => _map.clear();
 
   @override
   Stream<void> watch() => _controller.stream;

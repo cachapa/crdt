@@ -5,131 +5,124 @@ import 'package:test/test.dart';
 
 void main() {
   group('Basic', () {
-    Crdt<String, int> crdt;
+    CrdtMap<String, int> crdt;
 
     setUp(() {
-      crdt = Crdt('abc');
+      crdt = CrdtMap('abc');
     });
 
-    test('Put', () async {
-      await crdt.put('x', 1);
-      final value = crdt.get('x');
-      expect(value, 1);
+    test('Put', () {
+      crdt['x'] = 1;
+      expect(crdt['x'], 1);
     });
 
-    test('Put sequential', () async {
-      await crdt.put('x', 1);
-      await crdt.put('x', 2);
-      final value = crdt.get('x');
-      expect(value, 2);
+    test('Put sequential', () {
+      crdt['x'] = 1;
+      crdt['x'] = 2;
+      expect(crdt['x'], 2);
     });
 
-    test('Put many', () async {
-      await crdt.putAll({'x': 2, 'y': 3});
-      expect(crdt.get('x'), 2);
-      expect(crdt.get('y'), 3);
+    test('Put many', () {
+      crdt.addAll({'x': 2, 'y': 3});
+      expect(crdt['x'], 2);
+      expect(crdt['y'], 3);
     });
 
-    test('Delete value', () async {
-      await crdt.put('x', 1);
-      await crdt.delete('x');
+    test('Delete value', () {
+      crdt['x'] = 1;
+      crdt.remove('x');
       expect(crdt.isDeleted('x'), isTrue);
+      expect(crdt['x'], null);
     });
   });
 
   group('Seed', () {
-    Crdt crdt;
+    CrdtMap crdt;
 
     setUp(() {
-      crdt = Crdt('abc', MapStore({'x': Record(Hlc.now('abc'), 1)}));
+      crdt = CrdtMap('abc', MapStore({'x': Record(Hlc.now('abc'), 1)}));
     });
 
     test('Seed item', () {
-      final value = crdt.get('x');
-      expect(value, 1);
+      expect(crdt['x'], 1);
     });
 
-    test('Seed and put', () async {
-      await crdt.put('x', 2);
-      final value = crdt.get('x');
-      expect(value, 2);
+    test('Seed and put', () {
+      crdt['x'] = 2;
+      expect(crdt['x'], 2);
     });
   });
 
   group('Merge', () {
-    Crdt<String, int> crdt;
+    CrdtMap<String, int> crdt;
     final now = DateTime.now().microsecondsSinceEpoch;
 
     setUp(() {
-      crdt = Crdt('abc');
+      crdt = CrdtMap('abc');
     });
 
-    test('Merge older', () async {
-      await crdt.put('x', 2);
-      await crdt.merge({'x': Record(Hlc(now - 10000, 0, 'xyz'), 1)});
-      final value = crdt.get('x');
-      expect(value, 2);
+    test('Merge older', () {
+      crdt['x'] = 2;
+      crdt.merge({'x': Record(Hlc(now - 10000, 0, 'xyz'), 1)});
+      expect(crdt['x'], 2);
     });
 
-    test('Merge very old', () async {
-      await crdt.put('x', 2);
-      await crdt.merge({'x': Record(Hlc(now - 1000000, 0, 'xyz'), 1)});
-      expect(crdt.get('x'), 2);
+    test('Merge very old', () {
+      crdt['x'] = 2;
+      crdt.merge({'x': Record(Hlc(now - 1000000, 0, 'xyz'), 1)});
+      expect(crdt['x'], 2);
     });
 
-    test('Merge newer', () async {
-      await crdt.put('x', 1);
-      await crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), 2)});
-      expect(crdt.get('x'), 2);
+    test('Merge newer', () {
+      crdt['x'] = 1;
+      crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), 2)});
+      expect(crdt['x'], 2);
     });
 
-    test('Disambiguate using node id', () async {
-      await crdt.merge({'x': Record(Hlc(now, 0, 'nodeA'), 1)});
-      await crdt.merge({'x': Record(Hlc(now, 0, 'nodeB'), 2)});
-      expect(crdt.get('x'), 1);
+    test('Disambiguate using node id', () {
+      crdt.merge({'x': Record(Hlc(now, 0, 'nodeA'), 1)});
+      crdt.merge({'x': Record(Hlc(now, 0, 'nodeB'), 2)});
+      expect(crdt['x'], 1);
     });
 
     test('Merge same', () async {
-      await crdt.put('x', 2);
+      crdt['x'] = 2;
       final remoteTs = crdt.getRecord('x').hlc;
-      await crdt.merge({'x': Record(remoteTs, 1)});
-      final value = crdt.get('x');
-      expect(value, 2);
+      crdt.merge({'x': Record(remoteTs, 1)});
+      expect(crdt['x'], 2);
     });
 
-    test('Merge older, newer counter', () async {
-      await crdt.put('x', 2);
-      await crdt.merge({'x': Record(Hlc(now - 1000000, 2, 'xyz'), 1)});
-      final value = crdt.get('x');
-      expect(value, 2);
+    test('Merge older, newer counter', () {
+      crdt['x'] = 2;
+      crdt.merge({'x': Record(Hlc(now - 1000000, 2, 'xyz'), 1)});
+      expect(crdt['x'], 2);
     });
 
-    test('Merge same, newer counter', () async {
-      await crdt.put('x', 1);
+    test('Merge same, newer counter', () {
+      crdt['x'] = 1;
       final remoteTs = Hlc(crdt.getRecord('x').hlc.micros, 2, 'xyz');
-      await crdt.merge({'x': Record(remoteTs, 2)});
-      final value = crdt.get('x');
-      expect(value, 2);
+      crdt.merge({'x': Record(remoteTs, 2)});
+      expect(crdt['x'], 2);
     });
 
-    test('Merge new item', () async {
+    test('Merge new item', () {
       final map = {'x': Record<int>(Hlc.now('xyz'), 2)};
-      await crdt.merge(map);
+      crdt.merge(map);
       expect(crdt.getMap(), map);
     });
 
-    test('Merge deleted item', () async {
-      await crdt.put('x', 1);
-      await crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), null)});
+    test('Merge deleted item', () {
+      crdt['x'] = 1;
+      crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), null)});
       expect(crdt.isDeleted('x'), isTrue);
     });
   });
 
   group('Serialization', () {
-    Crdt<String, int> crdt;
+    CrdtMap<String, int> crdt;
 
     setUp(() {
-      crdt = Crdt(
+      crdt = CrdtMap(
           'abc', MapStore({'x': Record<int>(Hlc(1579633503110, 0, 'abc'), 1)}));
     });
 
@@ -165,10 +158,10 @@ void main() {
   });
 
   group('Custom class serialization', () {
-    Crdt<String, TestClass> crdt;
+    CrdtMap<String, TestClass> crdt;
 
     setUp(() {
-      crdt = Crdt(
+      crdt = CrdtMap(
           'abc',
           MapStore({
             'x': Record<TestClass>(

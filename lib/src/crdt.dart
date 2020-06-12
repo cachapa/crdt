@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 
 import 'hlc.dart';
@@ -6,21 +7,25 @@ import 'store.dart';
 typedef KeyDecoder<K> = K Function(String key);
 typedef ValueDecoder<V> = V Function(dynamic value);
 
-class Crdt<K, V> {
+class CrdtMap<K, V> extends MapBase<K, V> {
   final String nodeId;
   final Store<K, V> _store;
 
   /// Represents the latest logical time seen in the stored data
   Hlc _canonicalTime;
 
+  @override
+  Iterable<K> get keys => getMap().keys;
+
   /// Get values as list, excluding deleted items
+  @override
   List<V> get values => getMap()
       .values
       .where((record) => !record.isDeleted)
       .map((record) => record.value)
       .toList();
 
-  Crdt(this.nodeId, [Store<K, V> store]) : _store = store ?? MapStore() {
+  CrdtMap(this.nodeId, [Store<K, V> store]) : _store = store ?? MapStore() {
     // Seed canonical time
     _canonicalTime =
         _store.latestLogicalTime?.apply(nodeId: nodeId) ?? Hlc.zero(nodeId);
@@ -30,42 +35,47 @@ class Crdt<K, V> {
 
   Map<K, Record<V>> getMap([int logicalTime = 0]) => _store.getMap(logicalTime);
 
-  V get(K key) => _store.get(key)?.value;
+  @override
+  V operator [](Object key) => _store.get(key)?.value;
 
   Record<V> getRecord(K key) => _store.get(key);
 
-  Future<void> put(K key, V value) async {
+  @override
+  void operator []=(K key, V value) {
     _canonicalTime = Hlc.send(_canonicalTime);
-    await _store.put(key, Record<V>(_canonicalTime, value));
+    _store.put(key, Record<V>(_canonicalTime, value));
   }
 
-  Future<void> putAll(Map<K, V> records) async {
+  @override
+  void addAll(Map<K, V> records) {
     if (records.isEmpty) return;
 
     _canonicalTime = Hlc.send(_canonicalTime);
-    await _store.putAll(records.map<K, Record<V>>(
+    _store.putAll(records.map<K, Record<V>>(
         (key, value) => MapEntry(key, Record(_canonicalTime, value))));
   }
 
-  Future<void> delete(K key) => put(key, null);
+  @override
+  V remove(Object key) => this[key] = null;
 
   /// Clears all records in the CRDT
   /// Setting [purgeRecords] true purges the entire database, otherwise records
   /// are marked as deleted allowing the changes to propagate to all clients.
-  Future<void> clear({bool purgeRecords = false}) async {
+  @override
+  Future<void> clear({bool purgeRecords = false}) {
     if (purgeRecords) {
-      await _store.clear();
+      _store.clear();
     } else {
-      await putAll(_store.getMap().map((key, value) => MapEntry(key, null)));
+      addAll(_store.getMap().map((key, value) => MapEntry(key, null)));
     }
   }
 
-  Future<void> merge(Map<K, Record<V>> remoteRecords) async {
-    var localMap = await _store.getMap();
-    var updatedRecords = <K, Record<V>>{};
+  void merge(Map<K, Record<V>> remoteRecords) {
+    final localMap = _store.getMap();
+    final updatedRecords = <K, Record<V>>{};
 
     remoteRecords.forEach((key, remoteRecord) {
-      var localRecord = localMap[key];
+      final localRecord = localMap[key];
 
       // Keep record if there's no local copy, or if local is older
       if (localRecord == null || localRecord.hlc < remoteRecord.hlc) {
@@ -74,7 +84,7 @@ class Crdt<K, V> {
       }
     });
 
-    await _store.putAll(updatedRecords);
+    _store.putAll(updatedRecords);
   }
 
   Stream<void> watch() => _store.watch();

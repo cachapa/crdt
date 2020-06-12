@@ -8,7 +8,7 @@ void main() {
     CrdtMap<String, int> crdt;
 
     setUp(() {
-      crdt = CrdtMap('abc');
+      crdt = CrdtMap(MapStore('abc'));
     });
 
     test('Put', () {
@@ -40,7 +40,7 @@ void main() {
     CrdtMap crdt;
 
     setUp(() {
-      crdt = CrdtMap('abc', MapStore({'x': Record(Hlc.now('abc'), 1)}));
+      crdt = CrdtMap(MapStore('abc', {'x': Record(Hlc.now('abc'), 1)}));
     });
 
     test('Seed item', () {
@@ -58,7 +58,7 @@ void main() {
     final now = DateTime.now().microsecondsSinceEpoch;
 
     setUp(() {
-      crdt = CrdtMap('abc');
+      crdt = CrdtMap(MapStore('abc'));
     });
 
     test('Merge older', () {
@@ -85,7 +85,7 @@ void main() {
       expect(crdt['x'], 1);
     });
 
-    test('Merge same', () async {
+    test('Merge same', () {
       crdt['x'] = 2;
       final remoteTs = crdt.getRecord('x').hlc;
       crdt.merge({'x': Record(remoteTs, 1)});
@@ -123,7 +123,7 @@ void main() {
 
     setUp(() {
       crdt = CrdtMap(
-          'abc', MapStore({'x': Record<int>(Hlc(1579633503110, 0, 'abc'), 1)}));
+          MapStore('abc', {'x': Record<int>(Hlc(1579633503110, 0, 'abc'), 1)}));
     });
 
     test('To map', () {
@@ -161,12 +161,9 @@ void main() {
     CrdtMap<String, TestClass> crdt;
 
     setUp(() {
-      crdt = CrdtMap(
-          'abc',
-          MapStore({
-            'x': Record<TestClass>(
-                Hlc(1579633503110, 0, 'abc'), TestClass('test'))
-          }));
+      crdt = CrdtMap(MapStore('abc', {
+        'x': Record<TestClass>(Hlc(1579633503110, 0, 'abc'), TestClass('test'))
+      }));
     });
 
     test('To map', () {

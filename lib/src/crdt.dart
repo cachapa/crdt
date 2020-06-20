@@ -2,13 +2,13 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'hlc.dart';
-import 'store.dart';
+import 'crdt_store.dart';
 
 typedef KeyDecoder<K> = K Function(String key);
 typedef ValueDecoder<V> = V Function(dynamic value);
 
 class CrdtMap<K, V> extends MapBase<K, V> {
-  final Store<K, V> store;
+  final CrdtStore<K, V> store;
 
   /// Represents the latest logical time seen in the stored data
   Hlc _canonicalTime;

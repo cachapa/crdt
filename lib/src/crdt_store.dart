@@ -4,7 +4,7 @@ import 'package:crdt/src/hlc.dart';
 
 import 'crdt.dart';
 
-abstract class Store<K, V> {
+abstract class CrdtStore<K, V> {
   String get nodeId;
 
   Hlc get latestLogicalTime;
@@ -22,7 +22,7 @@ abstract class Store<K, V> {
   Stream<void> watch();
 }
 
-class MapStore<K, V> implements Store<K, V> {
+class MapStore<K, V> implements CrdtStore<K, V> {
   @override
   final String nodeId;
   final Map<K, Record<V>> _map;

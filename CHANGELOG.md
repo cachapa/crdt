@@ -1,3 +1,10 @@
+## 2.0.0
+
+- Removed CrdtStore.
+- Made Crdt abstract.
+- Removed watches (they can be added in subclasses - see HiveCrdt).
+- Added MapCrdt, a CRDT backed by a standard Map useful for testing or for volatile datasets.
+
 ## 1.2.2
 
 - Fix incrementing the HLC when merging newer records.

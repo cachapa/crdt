@@ -1,82 +1,53 @@
-import 'dart:collection';
-import 'dart:convert';
+import 'dart:math';
 
+import 'package:meta/meta.dart';
+
+import 'crdt_json.dart';
 import 'hlc.dart';
-import 'crdt_store.dart';
+import 'record.dart';
 
-typedef KeyDecoder<K> = K Function(String key);
-typedef ValueDecoder<V> = V Function(dynamic value);
-
-class CrdtMap<K, V> extends MapBase<K, V> {
-  final CrdtStore<K, V> store;
-
+abstract class Crdt<K, V> {
   /// Represents the latest logical time seen in the stored data
   Hlc _canonicalTime;
 
-  String get nodeId => store.nodeId;
+  String get nodeId;
 
-  @override
-  Iterable<K> get keys => getMap().keys;
+  Map<K, V> get map =>
+      (recordMap()..removeWhere((_, record) => record.isDeleted))
+          .map((key, record) => MapEntry(key, record.value));
 
-  /// Get values as list, excluding deleted items
-  @override
-  List<V> get values => getMap()
-      .values
-      .where((record) => !record.isDeleted)
-      .map((record) => record.value)
-      .toList();
+  List<K> get keys => map.keys;
 
-  CrdtMap(this.store) {
-    // Seed canonical time
-    _canonicalTime =
-        store.latestLogicalTime?.apply(nodeId: nodeId) ?? Hlc.zero(nodeId);
+  List<V> get values => map.values;
+
+  Crdt() {
+    _canonicalTime = computeCanonicalTime();
   }
 
-  bool isDeleted(K key) => store.get(key)?.isDeleted;
+  V get(K key) => getRecord(key).value;
 
-  Map<K, Record<V>> getMap([int logicalTime = 0]) => store.getMap(logicalTime);
+  void put(K key, V value) {
+    final time = Hlc.send(_canonicalTime);
+    if (time == _canonicalTime) return;
 
-  @override
-  V operator [](Object key) => store.get(key)?.value;
-
-  Record<V> getRecord(K key) => store.get(key);
-
-  @override
-  void operator []=(K key, V value) {
-    _canonicalTime = Hlc.send(_canonicalTime);
-    store.put(key, Record<V>(_canonicalTime, value));
+    _canonicalTime = time;
+    final record = Record<V>(_canonicalTime, value);
+    putRecord(key, record);
   }
 
-  @override
-  void addAll(Map<K, V> records) {
-    if (records.isEmpty) return;
+  void putAll(Map<K, V> values) =>
+      values.forEach((key, value) => put(key, value));
 
-    _canonicalTime = Hlc.send(_canonicalTime);
-    store.putAll(records.map<K, Record<V>>(
-        (key, value) => MapEntry(key, Record(_canonicalTime, value))));
-  }
+  void delete(K key) => put(key, null);
 
-  @override
-  V remove(Object key) => this[key] = null;
-
-  /// Clears all records in the CRDT
-  /// Setting [purgeRecords] true purges the entire database, otherwise records
-  /// are marked as deleted allowing the changes to propagate to all clients.
-  @override
-  void clear({bool purgeRecords = false}) {
-    if (purgeRecords) {
-      store.clear();
-    } else {
-      addAll(store.getMap().map((key, value) => MapEntry(key, null)));
-    }
-  }
+  bool isDeleted(K key) => getRecord(key)?.isDeleted;
 
   void merge(Map<K, Record<V>> remoteRecords) {
-    final localMap = store.getMap();
+    final localRecords = recordMap();
     final updatedRecords = <K, Record<V>>{};
 
     remoteRecords.forEach((key, remoteRecord) {
-      final localRecord = localMap[key];
+      final localRecord = localRecords[key];
 
       // Keep record if there's no local copy, or if local is older
       if (localRecord == null || localRecord.hlc < remoteRecord.hlc) {
@@ -85,47 +56,43 @@ class CrdtMap<K, V> extends MapBase<K, V> {
       }
     });
 
-    store.putAll(updatedRecords);
+    putRecords(updatedRecords);
   }
 
-  Stream<void> watch() => store.watch();
+  String toJson([int logicalTime = 0]) =>
+      CrdtJson.encode(recordMap(logicalTime));
+
+  void mergeJson(String json,
+      {KeyDecoder<K> keyDecoder, ValueDecoder<V> valueDecoder}) {
+    final map = CrdtJson.decode<K, V>(json,
+        keyDecoder: keyDecoder, valueDecoder: valueDecoder);
+    merge(map);
+  }
+
+  /// Iterates through the CRDT to find the highest HLC
+  /// Used to seed the Canonical Time
+  /// Should be overridden if the implementation can be more efficient
+  Hlc computeCanonicalTime() {
+    final map = recordMap();
+    return Hlc.fromLogicalTime(
+        map.isEmpty
+            ? 0
+            : map.values.map((record) => record.hlc.logicalTime).reduce(max),
+        nodeId);
+  }
 
   @override
-  String toString() => store.toString();
+  String toString() => recordMap().toString();
+
+  @protected
+  Record<V> getRecord(K key);
+
+  @protected
+  void putRecord(K key, Record<V> value);
+
+  @protected
+  void putRecords(Map<K, Record<V>> recordMap);
+
+  @protected
+  Map<K, Record<V>> recordMap([int logicalTime = 0]);
 }
-
-class Record<V> {
-  final Hlc hlc;
-  final V value;
-
-  bool get isDeleted => value == null;
-
-  Record(this.hlc, this.value);
-
-  Record.fromJson(Map<String, dynamic> map, [ValueDecoder<V> decoder])
-      : hlc = Hlc.parse(map['hlc']),
-        value = decoder == null || map['value'] == null
-            ? map['value']
-            : decoder(map['value']);
-
-  Map<String, dynamic> toJson() => {'hlc': hlc.toJson(), 'value': value};
-
-  @override
-  bool operator ==(other) =>
-      other is Record<V> && hlc == other.hlc && value == other.value;
-
-  @override
-  String toString() => toJson().toString();
-}
-
-String crdtMap2Json(Map map) => jsonEncode(
-    map.map((key, value) => MapEntry(key.toString(), value.toJson())));
-
-Map<K, Record<V>> json2CrdtMap<K, V>(String json,
-        {KeyDecoder<K> keyDecoder, ValueDecoder<V> valueDecoder}) =>
-    (jsonDecode(json) as Map<String, dynamic>).map(
-      (key, value) => MapEntry(
-        keyDecoder == null ? key : keyDecoder(key),
-        Record.fromJson(value, valueDecoder),
-      ),
-    );

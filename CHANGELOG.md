@@ -4,6 +4,7 @@
 - Made Crdt abstract.
 - Removed watches (they can be added in subclasses - see HiveCrdt).
 - Added MapCrdt, a CRDT backed by a standard Map useful for testing or for volatile datasets.
+- Added HiveCrdt as a submodule, A CRDT backed by a [Hive](https://pub.dev/packages/hive) store.
 
 ## 1.2.2
 

@@ -1,7 +1,5 @@
 import 'dart:math';
 
-import 'package:meta/meta.dart';
-
 import 'crdt_json.dart';
 import 'hlc.dart';
 import 'record.dart';
@@ -24,8 +22,10 @@ abstract class Crdt<K, V> {
     _canonicalTime = computeCanonicalTime();
   }
 
+  /// Gets a stored value. Returns [null] if value doesn't exist.
   V get(K key) => getRecord(key).value;
 
+  /// Inserts or updates a value in the CRDT and increments the canonical time.
   void put(K key, V value) {
     final time = Hlc.send(_canonicalTime);
     if (time == _canonicalTime) return;
@@ -35,13 +35,18 @@ abstract class Crdt<K, V> {
     putRecord(key, record);
   }
 
+  /// Inserts or updates all values in the CRDT and increments the canonical time accordingly.
   void putAll(Map<K, V> values) =>
       values.forEach((key, value) => put(key, value));
 
+  /// Marks the record as deleted.
+  /// Note: this doesn't actually delete the record since the deletion needs to be propagated when merging with other CRDTs.
   void delete(K key) => put(key, null);
 
   bool isDeleted(K key) => getRecord(key)?.isDeleted;
 
+  /// Merges two CRDTs and updates record and canonical clocks accordingly.
+  /// See also [mergeJson()].
   void merge(Map<K, Record<V>> remoteRecords) {
     final localRecords = recordMap();
     final updatedRecords = <K, Record<V>>{};
@@ -59,9 +64,16 @@ abstract class Crdt<K, V> {
     putRecords(updatedRecords);
   }
 
+  /// Outputs the contents of this CRDT in Json format.
+  /// Specify [logicalTime] to encode only the records on or after the timestamp.
+  /// Make sure non-native value types implement toJson().
   String toJson([int logicalTime = 0]) =>
       CrdtJson.encode(recordMap(logicalTime));
 
+  /// Merges two CRDTs and updates record and canonical clocks accordingly.
+  /// Use [keyDecoder] to convert non-string keys.
+  /// Use [valueDecoder] to convert non-native value types.
+  /// See also [merge()].
   void mergeJson(String json,
       {KeyDecoder<K> keyDecoder, ValueDecoder<V> valueDecoder}) {
     final map = CrdtJson.decode<K, V>(json,
@@ -84,15 +96,21 @@ abstract class Crdt<K, V> {
   @override
   String toString() => recordMap().toString();
 
-  @protected
+  //=== Abstract methods ===//
+
+  /// Gets record containing value and HLC.
   Record<V> getRecord(K key);
 
-  @protected
+  /// Stores record without updating the HLC. Meant for subclassing and shouldn't be used directly by clients.
+  /// Use [put()] instead.
   void putRecord(K key, Record<V> value);
 
-  @protected
+  /// Stores records without updating the HLC. Meant for subclassing and shouldn't be used directly by clients.
+  /// Use [putAll()] instead.
   void putRecords(Map<K, Record<V>> recordMap);
 
-  @protected
+  /// Retrieves CRDT map including HLCs. Useful for merging with other CRDTs.
+  /// Specify [logicalTime] to encode only the records on or after the timestamp.
+  /// See also [toJson()].
   Map<K, Record<V>> recordMap([int logicalTime = 0]);
 }

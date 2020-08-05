@@ -1,4 +1,4 @@
-A CRDT backed by a Hive store.
+A CRDT backed by a [Hive](https://pub.dev/packages/hive) store.
 
 ## Usage
 

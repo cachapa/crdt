@@ -14,6 +14,9 @@ class MapCrdt<K, V> extends Crdt<K, V> {
   }
 
   @override
+  bool containsKey(K key) => _map.containsKey(key);
+
+  @override
   Record<V> getRecord(K key) => _map[key];
 
   @override
@@ -23,6 +26,5 @@ class MapCrdt<K, V> extends Crdt<K, V> {
   void putRecords(Map<K, Record<V>> recordMap) => _map.addAll(recordMap);
 
   @override
-  Map<K, Record<V>> recordMap([int logicalTime = 0]) =>
-      _map..removeWhere((_, record) => record.hlc.logicalTime < logicalTime);
+  Map<K, Record<V>> recordMap() => Map<K, Record<V>>.from(_map);
 }

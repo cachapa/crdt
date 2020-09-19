@@ -5,8 +5,16 @@ import 'package:crdt/crdt.dart';
 class CrdtJson {
   CrdtJson._();
 
-  static String encode<K>(Map<K, Record> map) => jsonEncode(
-      map.map((key, value) => MapEntry(key.toString(), value.toJson())));
+  static String encode<K, V>(Map<K, Record<V>> map,
+          {KeyEncoder<K> keyEncoder, ValueEncoder<V> valueEncoder}) =>
+      jsonEncode(
+        map.map(
+          (key, value) => MapEntry(
+            keyEncoder == null ? key.toString() : keyEncoder(key),
+            value.toJson(valueEncoder: valueEncoder),
+          ),
+        ),
+      );
 
   static Map<K, Record<V>> decode<K, V>(String json,
           {KeyDecoder<K> keyDecoder, ValueDecoder<V> valueDecoder}) =>

@@ -8,18 +8,28 @@ abstract class Crdt<K, V> {
   /// Represents the latest logical time seen in the stored data
   Hlc _canonicalTime;
 
+  Hlc get canonicalTime => _canonicalTime;
+
   String get nodeId;
 
+  /// Returns [true] if CRDT has any non-deleted records.
+  bool get isEmpty => map.isEmpty;
+
+  /// Get size of dataset excluding deleted records.
+  int get length => map.length;
+
+  /// Returns a simple key-value map without HLCs or deleted records.
+  /// See [recordMap].
   Map<K, V> get map =>
       (recordMap()..removeWhere((_, record) => record.isDeleted))
           .map((key, record) => MapEntry(key, record.value));
 
-  List<K> get keys => map.keys;
+  List<K> get keys => map.keys.toList();
 
-  List<V> get values => map.values;
+  List<V> get values => map.values.toList();
 
   Crdt() {
-    _canonicalTime = computeCanonicalTime();
+    refreshCanonicalTime();
   }
 
   /// Gets a stored value. Returns [null] if value doesn't exist.
@@ -27,23 +37,31 @@ abstract class Crdt<K, V> {
 
   /// Inserts or updates a value in the CRDT and increments the canonical time.
   void put(K key, V value) {
-    final time = Hlc.send(_canonicalTime);
-    if (time == _canonicalTime) return;
-
-    _canonicalTime = time;
+    _canonicalTime = Hlc.send(_canonicalTime);
     final record = Record<V>(_canonicalTime, value);
     putRecord(key, record);
   }
 
   /// Inserts or updates all values in the CRDT and increments the canonical time accordingly.
-  void putAll(Map<K, V> values) =>
-      values.forEach((key, value) => put(key, value));
+  void putAll(Map<K, V> values) {
+    // Avoid touching the canonical time if no data is inserted
+    if (values.isEmpty) return;
+
+    _canonicalTime = Hlc.send(_canonicalTime);
+    final records = values.map<K, Record<V>>(
+        (key, value) => MapEntry(key, Record(_canonicalTime, value)));
+    putRecords(records);
+  }
 
   /// Marks the record as deleted.
   /// Note: this doesn't actually delete the record since the deletion needs to be propagated when merging with other CRDTs.
   void delete(K key) => put(key, null);
 
   bool isDeleted(K key) => getRecord(key)?.isDeleted;
+
+  /// Marks all records as deleted.
+  /// Note: this doesn't actually delete the records since the deletion needs to be propagated when merging with other CRDTs.
+  void clear() => putAll(map.map((key, _) => MapEntry(key, null)));
 
   /// Merges two CRDTs and updates record and canonical clocks accordingly.
   /// See also [mergeJson()].
@@ -65,10 +83,14 @@ abstract class Crdt<K, V> {
   }
 
   /// Outputs the contents of this CRDT in Json format.
-  /// Specify [logicalTime] to encode only the records on or after the timestamp.
-  /// Make sure non-native value types implement toJson().
-  String toJson([int logicalTime = 0]) =>
-      CrdtJson.encode(recordMap(logicalTime));
+  /// Use [keyEncoder] to convert non-string keys.
+  /// Use [valueEncoder] to convert non-native value types.
+  String toJson({KeyEncoder<K> keyEncoder, ValueEncoder<V> valueEncoder}) =>
+      CrdtJson.encode(
+        recordMap(),
+        keyEncoder: keyEncoder,
+        valueEncoder: valueEncoder,
+      );
 
   /// Merges two CRDTs and updates record and canonical clocks accordingly.
   /// Use [keyDecoder] to convert non-string keys.
@@ -76,17 +98,20 @@ abstract class Crdt<K, V> {
   /// See also [merge()].
   void mergeJson(String json,
       {KeyDecoder<K> keyDecoder, ValueDecoder<V> valueDecoder}) {
-    final map = CrdtJson.decode<K, V>(json,
-        keyDecoder: keyDecoder, valueDecoder: valueDecoder);
+    final map = CrdtJson.decode<K, V>(
+      json,
+      keyDecoder: keyDecoder,
+      valueDecoder: valueDecoder,
+    );
     merge(map);
   }
 
-  /// Iterates through the CRDT to find the highest HLC
-  /// Used to seed the Canonical Time
-  /// Should be overridden if the implementation can be more efficient
-  Hlc computeCanonicalTime() {
+  /// Iterates through the CRDT to find the highest HLC timestamp.
+  /// Used to seed the Canonical Time.
+  /// Should be overridden if the implementation can do it more efficiently.
+  void refreshCanonicalTime() {
     final map = recordMap();
-    return Hlc.fromLogicalTime(
+    _canonicalTime = Hlc.fromLogicalTime(
         map.isEmpty
             ? 0
             : map.values.map((record) => record.hlc.logicalTime).reduce(max),
@@ -98,19 +123,22 @@ abstract class Crdt<K, V> {
 
   //=== Abstract methods ===//
 
+  bool containsKey(K key);
+
   /// Gets record containing value and HLC.
   Record<V> getRecord(K key);
 
-  /// Stores record without updating the HLC. Meant for subclassing and shouldn't be used directly by clients.
-  /// Use [put()] instead.
+  /// Stores record without updating the HLC.
+  /// Meant for subclassing, clients should use [put()] instead.
+  /// Make sure to call [refreshCanonicalTime()] if using this method directly.
   void putRecord(K key, Record<V> value);
 
-  /// Stores records without updating the HLC. Meant for subclassing and shouldn't be used directly by clients.
-  /// Use [putAll()] instead.
+  /// Stores records without updating the HLC.
+  /// Meant for subclassing, clients should use [putAll()] instead.
+  /// Make sure to call [refreshCanonicalTime()] if using this method directly.
   void putRecords(Map<K, Record<V>> recordMap);
 
   /// Retrieves CRDT map including HLCs. Useful for merging with other CRDTs.
-  /// Specify [logicalTime] to encode only the records on or after the timestamp.
   /// See also [toJson()].
-  Map<K, Record<V>> recordMap([int logicalTime = 0]);
+  Map<K, Record<V>> recordMap();
 }

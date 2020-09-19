@@ -9,12 +9,45 @@ void main() {
       crdt = MapCrdt('abc');
     });
 
+    test('Node ID', () {
+      expect(crdt.nodeId, 'abc');
+    });
+
+    test('Empty', () {
+      expect(crdt.isEmpty, isTrue);
+      expect(crdt.length, 0);
+      expect(crdt.map, {});
+      expect(crdt.keys, []);
+      expect(crdt.values, []);
+    });
+
+    test('One record', () {
+      crdt.put('x', 1);
+
+      expect(crdt.isEmpty, isFalse);
+      expect(crdt.length, 1);
+      expect(crdt.map, {'x': 1});
+      expect(crdt.keys, ['x']);
+      expect(crdt.values, [1]);
+    });
+
+    test('Empty after deleted record', () {
+      crdt.put('x', 1);
+      crdt.delete('x');
+
+      expect(crdt.isEmpty, isTrue);
+      expect(crdt.length, 0);
+      expect(crdt.map, {});
+      expect(crdt.keys, []);
+      expect(crdt.values, []);
+    });
+
     test('Put', () {
       crdt.put('x', 1);
       expect(crdt.get('x'), 1);
     });
 
-    test('Put sequential', () {
+    test('Update existing', () {
       crdt.put('x', 1);
       crdt.put('x', 2);
       expect(crdt.get('x'), 2);
@@ -28,9 +61,22 @@ void main() {
 
     test('Delete value', () {
       crdt.put('x', 1);
+      crdt.put('y', 2);
       crdt.delete('x');
       expect(crdt.isDeleted('x'), isTrue);
+      expect(crdt.isDeleted('y'), isFalse);
       expect(crdt.get('x'), null);
+      expect(crdt.get('y'), 2);
+    });
+
+    test('Clear', () {
+      crdt.put('x', 1);
+      crdt.put('y', 2);
+      crdt.clear();
+      expect(crdt.isDeleted('x'), isTrue);
+      expect(crdt.isDeleted('y'), isTrue);
+      expect(crdt.get('x'), null);
+      expect(crdt.get('y'), null);
     });
   });
 
@@ -113,6 +159,12 @@ void main() {
       crdt.put('x', 1);
       crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), null)});
       expect(crdt.isDeleted('x'), isTrue);
+    });
+
+    test('Update HLC on merge', () {
+      crdt.put('x', 1);
+      crdt.merge({'y': Record(Hlc(now - 1000000, 0, 'xyz'), 2)});
+      expect(crdt.values, [1, 2]);
     });
   });
 

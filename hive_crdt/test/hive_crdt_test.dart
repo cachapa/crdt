@@ -61,9 +61,7 @@ void main() {
     });
 
     test('From key', () {
-      final values = crdt.between(
-        start: 15,
-      );
+      final values = crdt.between(start: 15);
       expect(values, [15, 16, 17, 18, 19]);
     });
 

@@ -16,6 +16,9 @@ class HiveCrdt<K, V> extends Crdt<K, V> {
   }
 
   @override
+  bool containsKey(K key) => _box.containsKey(_encode(key));
+
+  @override
   Record<V> getRecord(K key) => _box.get(_encode(key));
 
   @override
@@ -26,15 +29,15 @@ class HiveCrdt<K, V> extends Crdt<K, V> {
       _box.putAll(recordMap.map((key, value) => MapEntry(_encode(key), value)));
 
   @override
-  Map<K, Record<V>> recordMap([int logicalTime = 0]) =>
-      _box.toMap().map<K, Record<V>>((key, value) =>
-          MapEntry(_decode(key), Record(value.hlc, value.value)))
-        ..removeWhere((key, value) => value.hlc.logicalTime <= logicalTime);
+  Map<K, Record<V>> recordMap() => _box.toMap().map<K, Record<V>>(
+      (key, value) => MapEntry(_decode(key), Record(value.hlc, value.value)));
 
-  Iterable<V> between({K start, K end}) => _box
+  List<V> between({K start, K end}) => _box
       .valuesBetween(startKey: start, endKey: end)
       .where((record) => !record.isDeleted)
-      .map((record) => record.value);
+      .map((record) => record.value)
+      .toList()
+      .cast<V>();
 
   Stream<BoxEvent> watch({K key}) => _box.watch(key: key);
 

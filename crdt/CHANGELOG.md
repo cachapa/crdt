@@ -1,3 +1,15 @@
+## 2.1.0
+
+- Hlc: Added `const` keywords to constructors wherever possible
+- Crdt: Exposed canonical time
+- Crdt: Added convenience methods (isEmpty. length, etc.)
+- Crdt: Added encoders and decoders to serialization helpers
+- Crdt: Removed delta subsets using the record's HLC since it can lead to incomplete merges
+- HiveCrdt: Store record modified time
+- HiveCrdt: Retrieve delta changesets based on modified times
+- HiveCrdt: `between()` returns values instead of records
+- HiveCrdt: `watch()` returns `MapEntry` instead of `BoxEvent`
+
 ## 2.0.0
 
 - Removed CrdtStore.

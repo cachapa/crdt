@@ -1,3 +1,4 @@
+import 'package:crdt/crdt.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_crdt/hive_adapters.dart';
 import 'package:hive_crdt/hive_crdt.dart';
@@ -10,6 +11,7 @@ void main() {
   Hive.init('.');
   Hive.registerAdapter(HlcAdapter(42, nodeId));
   Hive.registerAdapter(RecordAdapter(43));
+  Hive.registerAdapter(ModRecordAdapter(44));
 
   group('Basic tests', () {
     HiveCrdt<String, int> crdt;
@@ -36,7 +38,7 @@ void main() {
     });
 
     tearDown(() async {
-      await crdt.deleteStore();
+      // await crdt.deleteStore();
     });
   });
 
@@ -61,18 +63,79 @@ void main() {
     });
 
     test('From key', () {
-      final values = crdt.between(start: 15);
+      final values = crdt.between(startKey: 15);
       expect(values, [15, 16, 17, 18, 19]);
     });
 
     test('Between keys', () {
-      final values = crdt.between(start: 5, end: 10);
+      final values = crdt.between(startKey: 5, endKey: 10);
       expect(values, [5, 6, 7, 8, 9, 10]);
     });
 
     test('Up to key', () {
-      final values = crdt.between(end: 5);
+      final values = crdt.between(endKey: 5);
       expect(values, [0, 1, 2, 3, 4, 5]);
+    });
+
+    tearDown(() async {
+      await crdt.deleteStore();
+    });
+  });
+
+  group('Changeset', () {
+    HiveCrdt<String, int> crdt;
+
+    setUp(() async {
+      crdt = await HiveCrdt.open('test', nodeId, path: 'test_store');
+    });
+
+    test('To', () {
+      crdt.put('a', 1);
+      crdt.put('b', 2);
+      final hlc = crdt.canonicalTime;
+      crdt.put('c', 3);
+      final values = crdt.changeset(to: hlc);
+      expect(values.length, 1);
+      expect(values['a'].value, 1);
+    });
+
+    test('Between', () {
+      crdt.put('a', 1);
+      final from = crdt.canonicalTime;
+      crdt.put('b', 2);
+      crdt.put('c', 3);
+      final to = crdt.canonicalTime;
+      final values = crdt.changeset(from: from, to: to);
+      expect(values.length, 1);
+      expect(values['b'].value, 2);
+    });
+
+    test('From', () {
+      crdt.put('a', 1);
+      crdt.put('b', 2);
+      final hlc = crdt.canonicalTime;
+      crdt.put('c', 3);
+      final values = crdt.changeset(from: hlc);
+      expect(values.length, 1);
+      expect(values['c'].value, 3);
+    });
+
+    test('All', () {
+      crdt.put('a', 1);
+      crdt.put('b', 2);
+      crdt.put('c', 3);
+      final values = crdt.changeset();
+      expect(values.values.map((e) => e.value), [1, 2, 3]);
+    });
+
+    test('json', () {
+      crdt.put('a', 1);
+      crdt.put('b', 2);
+      final hlc = crdt.canonicalTime;
+      crdt.put('c', 3);
+      final json = crdt.jsonChangeset(from: hlc);
+      expect(json, startsWith('{"c":{"hlc":'));
+      expect(json, endsWith(',"value":3}}'));
     });
 
     tearDown(() async {
@@ -115,8 +178,10 @@ void main() {
       final streamTest = expectLater(
           crdt.watch(),
           emitsInAnyOrder([
-            (BoxEvent event) => event.key == 'x' && event.value.value == 1,
-            (BoxEvent event) => event.key == 'y' && event.value.value == 2,
+            (MapEntry<String, int> event) =>
+                event.key == 'x' && event.value == 1,
+            (MapEntry<String, int> event) =>
+                event.key == 'y' && event.value == 2,
           ]));
       crdt.put('x', 1);
       crdt.put('y', 2);
@@ -127,7 +192,7 @@ void main() {
       final streamTest = expectLater(
           crdt.watch(key: 'y'),
           emits(
-            (BoxEvent event) => event.key == 'y' && event.value.value == 2,
+            (event) => event.key == 'y' && event.value == 2,
           ));
       crdt.put('x', 1);
       crdt.put('y', 2);

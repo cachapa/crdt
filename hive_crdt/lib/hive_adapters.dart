@@ -1,6 +1,8 @@
 import 'package:crdt/crdt.dart';
 import 'package:hive/hive.dart';
 
+import 'hive_crdt.dart';
+
 class HlcAdapter extends TypeAdapter<Hlc> {
   @override
   final int typeId;
@@ -31,5 +33,23 @@ class RecordAdapter extends TypeAdapter<Record> {
   void write(BinaryWriter writer, Record obj) {
     writer.write(obj.hlc);
     writer.write(obj.value);
+  }
+}
+
+class ModRecordAdapter extends TypeAdapter<ModRecord> {
+  @override
+  final typeId;
+
+  ModRecordAdapter(this.typeId);
+
+  @override
+  ModRecord read(BinaryReader reader) {
+    return ModRecord(reader.read(), reader.read());
+  }
+
+  @override
+  void write(BinaryWriter writer, ModRecord obj) {
+    writer.write(obj.record);
+    writer.write(obj.modified);
   }
 }

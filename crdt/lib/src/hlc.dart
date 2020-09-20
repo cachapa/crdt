@@ -21,17 +21,17 @@ class Hlc implements Comparable<Hlc> {
 
   int get logicalTime => (micros & _microsMask) + counter;
 
-  Hlc(int micros, this.counter, this.nodeId)
+  const Hlc(int micros, this.counter, this.nodeId)
       : micros = micros & _microsMask,
         assert(counter <= _maxCounter),
         assert(nodeId != null);
 
-  Hlc.zero(String nodeId) : this(0, 0, nodeId);
+  const Hlc.zero(String nodeId) : this(0, 0, nodeId);
 
   Hlc.now(String nodeId)
       : this(DateTime.now().microsecondsSinceEpoch, 0, nodeId);
 
-  Hlc.fromLogicalTime(logicalTime, String nodeId)
+  const Hlc.fromLogicalTime(logicalTime, String nodeId)
       : this(logicalTime & _microsMask, logicalTime & _counterMask, nodeId);
 
   factory Hlc.parse(String timestamp) {

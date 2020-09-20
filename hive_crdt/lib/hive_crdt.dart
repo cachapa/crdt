@@ -65,7 +65,8 @@ class HiveCrdt<K, V> extends Crdt<K, V> {
   /// Permanently deletes the store from disk. Useful for testing.
   Future<void> deleteStore() => _box.deleteFromDisk();
 
-  dynamic _encode(K key) => K == DateTime ? key.toString() : key;
+  dynamic _encode(K key) =>
+      key is DateTime ? key?.toUtc()?.toIso8601String() : key;
 
   K _decode(dynamic key) => K == DateTime ? DateTime.parse(key) : key;
 }

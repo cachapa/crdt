@@ -24,6 +24,8 @@ class Hlc implements Comparable<Hlc> {
   const Hlc(int micros, this.counter, this.nodeId)
       : micros = micros & _microsMask,
         assert(counter <= _maxCounter),
+        assert(micros != null),
+        assert(counter != null),
         assert(nodeId != null);
 
   const Hlc.zero(String nodeId) : this(0, 0, nodeId);
@@ -81,23 +83,26 @@ class Hlc implements Comparable<Hlc> {
   /// Returns an updated canonical timestamp instance.
   /// Local wall time will be used if [micros] isn't supplied.
   factory Hlc.recv(Hlc canonical, Hlc remote, {int micros}) {
-    // Assert the node id
-    if (canonical.nodeId != null && canonical.nodeId == remote.nodeId) {
-      throw DuplicateNodeException(canonical.nodeId);
-    }
-
-    // No need to do any more work if local is more recent
-    if (canonical >= remote) return canonical;
-
     // Retrieve the local wall time if micros is null
     micros = (micros ?? DateTime.now().microsecondsSinceEpoch) & _microsMask;
 
+    // Assert the node id
+    if (canonical.nodeId == remote.nodeId) {
+      throw DuplicateNodeException(canonical.nodeId);
+    }
     // Assert the remote clock drift
     if (remote.micros - micros > _maxDrift) {
       throw ClockDriftException(remote.micros, micros);
     }
 
-    return remote.apply(nodeId: canonical.nodeId);
+    // No need to do any more work if the canonical logical time is higher
+    if (canonical.logicalTime > remote.logicalTime) return canonical;
+
+    // Ensure that new canonical time is higher than the remote
+    final microsNew = max(micros, remote.micros);
+    final counterNew = microsNew == remote.micros ? remote.counter + 1 : 0;
+
+    return Hlc(microsNew, counterNew, canonical.nodeId);
   }
 
   String toJson() => toString();

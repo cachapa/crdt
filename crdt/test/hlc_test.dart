@@ -159,16 +159,22 @@ void main() {
       expect(hlc, equals(canonical));
     });
 
+    test('Same remote time', () {
+      var remote = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abcd');
+      var hlc = Hlc.recv(canonical, remote, micros: 1579633503119000);
+      expect(hlc, Hlc(remote.micros, remote.counter + 1, canonical.nodeId));
+    });
+
     test('Higher remote time', () {
       var remote = Hlc.parse('2020-01-21T19:05:04.110Z-0000-abcd');
       var hlc = Hlc.recv(canonical, remote, micros: 1579633503119000);
-      expect(hlc, Hlc(remote.micros, remote.counter, canonical.nodeId));
+      expect(hlc, Hlc(remote.micros, remote.counter + 1, canonical.nodeId));
     });
 
     test('Higher wall clock time', () {
       var remote = Hlc.parse('2020-01-21T19:05:04.110Z-0000-abcd');
       var hlc = Hlc.recv(canonical, remote, micros: 1579633513129000);
-      expect(hlc, Hlc(remote.micros, remote.counter, canonical.nodeId));
+      expect(hlc, Hlc(1579633513129000, 0, canonical.nodeId));
     });
 
     test('Fail on clock drift', () {

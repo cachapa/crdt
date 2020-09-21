@@ -11,7 +11,7 @@ class HiveCrdt<K, V> extends Crdt<K, V> {
 
   static Future<HiveCrdt<K, V>> open<K, V>(String name, String nodeId,
       {String path}) async {
-    var box = await Hive.openBox<ModRecord>(name, path: path);
+    final box = await Hive.openBox<ModRecord>(name, path: path);
     return HiveCrdt<K, V>._internal(box, nodeId);
   }
 

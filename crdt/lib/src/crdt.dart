@@ -33,7 +33,7 @@ abstract class Crdt<K, V> {
   }
 
   /// Gets a stored value. Returns [null] if value doesn't exist.
-  V get(K key) => getRecord(key).value;
+  V get(K key) => getRecord(key)?.value;
 
   /// Inserts or updates a value in the CRDT and increments the canonical time.
   void put(K key, V value) {

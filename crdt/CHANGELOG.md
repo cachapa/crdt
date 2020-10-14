@@ -1,22 +1,25 @@
 ## 2.1.0
 
-- Hlc: Added `const` keywords to constructors wherever possible
-- Crdt: Exposed canonical time
-- Crdt: Added convenience methods (isEmpty. length, etc.)
-- Crdt: Added encoders and decoders to serialization helpers
-- Crdt: Removed delta subsets using the record's HLC since it can lead to incomplete merges
+- Hlc: Add `const` keywords to constructors wherever possible
+- Crdt: Expose canonical time
+- Crdt: Add convenience methods (isEmpty. length, etc.)
+- Crdt: Add encoders and decoders to serialization helpers
+- Crdt: Remove delta subsets using the record's HLC since it can lead to incomplete merges
+- Crdt: Fix issue where canonical time wasn't being incremented on merge
+- Crdt: Fix NPE when getting non-existent value
 - HiveCrdt: Store record modified time
 - HiveCrdt: Retrieve delta changesets based on modified times
 - HiveCrdt: `between()` returns values instead of records
 - HiveCrdt: `watch()` returns `MapEntry` instead of `BoxEvent`
+- HiveCrdt: Fix DateTime key serialization
 
 ## 2.0.0
 
-- Removed CrdtStore.
-- Made Crdt abstract.
-- Removed watches (they can be added in subclasses - see HiveCrdt).
-- Added MapCrdt, a CRDT backed by a standard Map useful for testing or for volatile datasets.
-- Added HiveCrdt as a submodule, A CRDT backed by a [Hive](https://pub.dev/packages/hive) store.
+- Remove CrdtStore.
+- Make Crdt abstract.
+- Remove watches (they can be added in subclasses - see HiveCrdt).
+- Add MapCrdt, a CRDT backed by a standard Map useful for testing or for volatile datasets.
+- Add HiveCrdt as a submodule, A CRDT backed by a [Hive](https://pub.dev/packages/hive) store.
 
 ## 1.2.2
 

@@ -1,8 +1,9 @@
 import 'dart:math';
 
-const _microsMask = 0xFFFFFFFFFFFF0000;
-const _counterMask = 0xFFFF;
-const _maxCounter = _counterMask;
+import 'mask/mask.dart';
+
+const _microsClearLSBs = 4;
+const _maxCounter = 0xFFFF;
 const _maxDrift = 60000000; // 1h in µs
 
 // Used to disambiguate otherwise equal HLCs deterministically.
@@ -19,22 +20,24 @@ class Hlc implements Comparable<Hlc> {
 
   final String nodeId;
 
-  int get logicalTime => (micros & _microsMask) + counter;
+  int get logicalTime =>
+      clearLeastSignificantBytes(micros, _microsClearLSBs) + counter;
 
-  const Hlc(int micros, this.counter, this.nodeId)
-      : micros = micros & _microsMask,
+  Hlc(int micros, this.counter, this.nodeId)
+      : micros = clearLeastSignificantBytes(micros, _microsClearLSBs),
         assert(counter <= _maxCounter),
         assert(micros != null),
         assert(counter != null),
         assert(nodeId != null);
 
-  const Hlc.zero(String nodeId) : this(0, 0, nodeId);
+  Hlc.zero(String nodeId) : this(0, 0, nodeId);
 
   Hlc.now(String nodeId)
       : this(DateTime.now().microsecondsSinceEpoch, 0, nodeId);
 
-  const Hlc.fromLogicalTime(logicalTime, String nodeId)
-      : this(logicalTime & _microsMask, logicalTime & _counterMask, nodeId);
+  Hlc.fromLogicalTime(logicalTime, String nodeId)
+      : this(clearLeastSignificantBytes(logicalTime, _microsClearLSBs),
+            logicalTime & _maxCounter, nodeId);
 
   factory Hlc.parse(String timestamp) {
     final counterDash = timestamp.indexOf('-', timestamp.lastIndexOf(':'));
@@ -55,7 +58,8 @@ class Hlc implements Comparable<Hlc> {
   /// [micros] isn't supplied.
   factory Hlc.send(Hlc canonical, {int micros}) {
     // Retrieve the local wall time if micros is null
-    micros = (micros ?? DateTime.now().microsecondsSinceEpoch) & _microsMask;
+    micros = clearLeastSignificantBytes(
+        micros ?? DateTime.now().microsecondsSinceEpoch, _microsClearLSBs);
 
     // Unpack the canonical time and counter
     final microsOld = canonical.micros;
@@ -84,7 +88,8 @@ class Hlc implements Comparable<Hlc> {
   /// Local wall time will be used if [micros] isn't supplied.
   factory Hlc.recv(Hlc canonical, Hlc remote, {int micros}) {
     // Retrieve the local wall time if micros is null
-    micros = (micros ?? DateTime.now().microsecondsSinceEpoch) & _microsMask;
+    micros = clearLeastSignificantBytes(
+        micros ?? DateTime.now().microsecondsSinceEpoch, _microsClearLSBs);
 
     // Assert the node id
     if (canonical.nodeId == remote.nodeId) {

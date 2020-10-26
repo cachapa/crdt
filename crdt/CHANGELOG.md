@@ -1,3 +1,6 @@
+## 2.1.1
+- Crdt: Fix HLC timestamp generation for dart-web
+
 ## 2.1.0
 
 - Hlc: Add `const` keywords to constructors wherever possible

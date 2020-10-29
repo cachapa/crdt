@@ -242,7 +242,7 @@ void main() {
       final crdt = MapCrdt<String, TestClass>('abc');
       final map = CrdtJson.decode<String, TestClass>(
           '{"x":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":{"test":"test"}}}',
-          valueDecoder: (value) => TestClass.fromJson(value));
+          valueDecoder: (key, value) => TestClass.fromJson(value));
       crdt.putRecords(map);
       expect(crdt.recordMap(),
           {'x': Record(Hlc(1579633503110, 0, 'abc'), TestClass('test'))});

@@ -85,7 +85,7 @@ abstract class Crdt<K, V> {
   /// Outputs the contents of this CRDT in Json format.
   /// Use [keyEncoder] to convert non-string keys.
   /// Use [valueEncoder] to convert non-native value types.
-  String toJson({KeyEncoder<K> keyEncoder, ValueEncoder<V> valueEncoder}) =>
+  String toJson({KeyEncoder<K> keyEncoder, ValueEncoder<K, V> valueEncoder}) =>
       CrdtJson.encode(
         recordMap(),
         keyEncoder: keyEncoder,

@@ -6,12 +6,12 @@ class CrdtJson {
   CrdtJson._();
 
   static String encode<K, V>(Map<K, Record<V>> map,
-          {KeyEncoder<K> keyEncoder, ValueEncoder<V> valueEncoder}) =>
+          {KeyEncoder<K> keyEncoder, ValueEncoder<K, V> valueEncoder}) =>
       jsonEncode(
         map.map(
           (key, value) => MapEntry(
             keyEncoder == null ? key.toString() : keyEncoder(key),
-            value.toJson(valueEncoder: valueEncoder),
+            value.toJson(key, valueEncoder: valueEncoder),
           ),
         ),
       );
@@ -21,7 +21,7 @@ class CrdtJson {
       (jsonDecode(json) as Map<String, dynamic>).map(
         (key, value) => MapEntry(
           keyDecoder == null ? key : keyDecoder(key),
-          Record.fromJson(value, valueDecoder),
+          Record.fromJson(key, value, valueDecoder),
         ),
       );
 }

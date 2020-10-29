@@ -1,3 +1,6 @@
+## 2.2.0
+- Crdt: Pass keys to map encoder and decoder, useful to disambiguate when parsing
+
 ## 2.1.1
 - Crdt: Fix HLC timestamp generation for dart-web
 

@@ -1,3 +1,6 @@
+## 2.2.1
+- Crdt: Fix encoder return type
+
 ## 2.2.0
 - Crdt: Pass keys to map encoder and decoder, useful to disambiguate when parsing
 

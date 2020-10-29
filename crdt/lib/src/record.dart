@@ -1,7 +1,7 @@
 import 'hlc.dart';
 
 typedef KeyEncoder<K> = String Function(K key);
-typedef ValueEncoder<K, V> = String Function(K key, V value);
+typedef ValueEncoder<K, V> = dynamic Function(K key, V value);
 
 typedef KeyDecoder<K> = K Function(String key);
 typedef ValueDecoder<V> = V Function(String key, dynamic value);

@@ -19,7 +19,7 @@ class HiveCrdt<K, V> extends Crdt<K, V> {
   bool containsKey(K key) => _box.containsKey(_encode(key));
 
   @override
-  Record<V> getRecord(K key) => _box.get(_encode(key)).record;
+  Record<V> getRecord(K key) => _box.get(_encode(key))?.record as Record<V>;
 
   @override
   void putRecord(K key, Record<V> record) =>

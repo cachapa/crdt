@@ -1,3 +1,7 @@
+## 2.2.2
+- Hlc: Add convenience `fromDate` constructor
+- HiveCrdt: Fix NPE when getting a non-existing record
+
 ## 2.2.1
 - Crdt: Fix encoder return type
 

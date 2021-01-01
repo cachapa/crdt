@@ -17,7 +17,6 @@ Comparator<String> _idDisambiguator = (s1, s2) => s2.compareTo(s1);
 class Hlc implements Comparable<Hlc> {
   final int micros;
   final int counter;
-
   final String nodeId;
 
   int get logicalTime =>

@@ -34,11 +34,11 @@ String sendToRemote(String json) {
 }
 ```
 
-You'll probably want to implement some sort of persistent storage by subclassing the `Crdt` class. An example using [Hive](https://pub.dev/packages/hive) is provided in the parent project.
+You'll probably want to implement some sort of persistent storage by subclassing the `Crdt` class. An example using [Hive](https://pub.dev/packages/hive) is provided in [crdt_hive](https://github.com/cachapa/crdt_hive).
 
 ## Example
 
-An example of how it can be used in an application can be found at https://github.com/cachapa/crdt_server.
+A simple example is provided with this project, otherwise for a real-world application check the `tudo` to-do app: [client](https://github.com/cachapa/tudo_client) & [server](https://github.com/cachapa/tudo_server).
 
 ## Features and bugs
 

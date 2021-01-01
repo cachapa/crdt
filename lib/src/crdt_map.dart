@@ -1,15 +1,16 @@
 import 'crdt.dart';
+import 'hlc.dart';
 import 'record.dart';
 
 /// A CRDT backed by a in-memory map.
 /// Useful for testing, or for applications which only require temporary datasets.
-class MapCrdt<K, V> extends Crdt<K, V> {
+class CrdtMap<K, V> extends Crdt<K, V> {
   final _map = <K, Record<V>>{};
 
   @override
   final String nodeId;
 
-  MapCrdt(this.nodeId, [Map<K, Record<V>> seed = const {}]) {
+  CrdtMap(this.nodeId, [Map<K, Record<V>> seed = const {}]) {
     _map.addAll(seed);
   }
 
@@ -26,5 +27,8 @@ class MapCrdt<K, V> extends Crdt<K, V> {
   void putRecords(Map<K, Record<V>> recordMap) => _map.addAll(recordMap);
 
   @override
-  Map<K, Record<V>> recordMap() => Map<K, Record<V>>.from(_map);
+  Map<K, Record<V>> recordMap({Hlc modifiedSince}) =>
+      Map<K, Record<V>>.from(_map)
+        ..removeWhere((_, record) =>
+            record.modified.logicalTime < (modifiedSince?.logicalTime ?? 0));
 }

@@ -1,3 +1,9 @@
+## 3.0.0-pre.0
+- Add `modified` field to `Record`
+- Add optional parameter `modifiedSince` to 'recordMap'
+- Rename MapCrdt to CrdtMap
+- Move HiveCrdt project to its own repo: https://github.com/cachapa/crdt_hive
+
 ## 2.2.2
 - Hlc: Add convenience `fromDate` constructor
 - HiveCrdt: Fix NPE when getting a non-existing record

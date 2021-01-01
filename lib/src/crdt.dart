@@ -38,7 +38,7 @@ abstract class Crdt<K, V> {
   /// Inserts or updates a value in the CRDT and increments the canonical time.
   void put(K key, V value) {
     _canonicalTime = Hlc.send(_canonicalTime);
-    final record = Record<V>(_canonicalTime, value);
+    final record = Record<V>(_canonicalTime, value, _canonicalTime);
     putRecord(key, record);
   }
 
@@ -48,8 +48,8 @@ abstract class Crdt<K, V> {
     if (values.isEmpty) return;
 
     _canonicalTime = Hlc.send(_canonicalTime);
-    final records = values.map<K, Record<V>>(
-        (key, value) => MapEntry(key, Record(_canonicalTime, value)));
+    final records = values.map<K, Record<V>>((key, value) =>
+        MapEntry(key, Record(_canonicalTime, value, _canonicalTime)));
     putRecords(records);
   }
 
@@ -82,16 +82,6 @@ abstract class Crdt<K, V> {
     putRecords(updatedRecords);
   }
 
-  /// Outputs the contents of this CRDT in Json format.
-  /// Use [keyEncoder] to convert non-string keys.
-  /// Use [valueEncoder] to convert non-native value types.
-  String toJson({KeyEncoder<K> keyEncoder, ValueEncoder<K, V> valueEncoder}) =>
-      CrdtJson.encode(
-        recordMap(),
-        keyEncoder: keyEncoder,
-        valueEncoder: valueEncoder,
-      );
-
   /// Merges two CRDTs and updates record and canonical clocks accordingly.
   /// Use [keyDecoder] to convert non-string keys.
   /// Use [valueDecoder] to convert non-native value types.
@@ -100,6 +90,7 @@ abstract class Crdt<K, V> {
       {KeyDecoder<K> keyDecoder, ValueDecoder<V> valueDecoder}) {
     final map = CrdtJson.decode<K, V>(
       json,
+      _canonicalTime,
       keyDecoder: keyDecoder,
       valueDecoder: valueDecoder,
     );
@@ -117,6 +108,20 @@ abstract class Crdt<K, V> {
             : map.values.map((record) => record.hlc.logicalTime).reduce(max),
         nodeId);
   }
+
+  /// Outputs the contents of this CRDT in Json format.
+  /// Use [modifiedSince] to encode only the most recently modified records.
+  /// Use [keyEncoder] to convert non-string keys.
+  /// Use [valueEncoder] to convert non-native value types.
+  String toJson(
+          {Hlc modifiedSince,
+          KeyEncoder<K> keyEncoder,
+          ValueEncoder<K, V> valueEncoder}) =>
+      CrdtJson.encode(
+        recordMap(modifiedSince: modifiedSince),
+        keyEncoder: keyEncoder,
+        valueEncoder: valueEncoder,
+      );
 
   @override
   String toString() => recordMap().toString();
@@ -139,6 +144,7 @@ abstract class Crdt<K, V> {
   void putRecords(Map<K, Record<V>> recordMap);
 
   /// Retrieves CRDT map including HLCs. Useful for merging with other CRDTs.
+  /// Use [modifiedSince] to get only the most recently modified records.
   /// See also [toJson()].
-  Map<K, Record<V>> recordMap();
+  Map<K, Record<V>> recordMap({Hlc modifiedSince});
 }

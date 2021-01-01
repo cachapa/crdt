@@ -10,12 +10,13 @@ typedef ValueDecoder<V> = V Function(String key, dynamic value);
 class Record<V> {
   final Hlc hlc;
   final V value;
+  final Hlc modified;
 
   bool get isDeleted => value == null;
 
-  Record(this.hlc, this.value);
+  Record(this.hlc, this.value, this.modified);
 
-  Record.fromJson(dynamic key, Map<String, dynamic> map,
+  Record.fromJson(dynamic key, Map<String, dynamic> map, this.modified,
       [ValueDecoder<V> valueDecoder])
       : hlc = Hlc.parse(map['hlc']),
         value = valueDecoder == null || map['value'] == null

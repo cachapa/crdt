@@ -7,12 +7,12 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: google/dart:latest
+      image: google/dart:beta
 
     steps:
       - uses: actions/checkout@v1
       - name: Verify code formatting
-        run: dartfmt --dry-run --set-exit-if-changed .
+        run: dart format --set-exit-if-changed .
       - name: Get dependencies
         run: pub get
       - name: Static code analysis

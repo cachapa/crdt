@@ -5,15 +5,15 @@ import 'package:test/test.dart';
 void main() {}
 
 void crdtTests<T extends Crdt<String, int>>(String nodeId,
-    {T Function() syncSetup,
-    Future<T> Function() asyncSetup,
-    void Function(T crdt) syncTearDown,
-    Future<void> Function(T crdt) asyncTearDown}) {
+    {T Function()? syncSetup,
+    Future<T> Function()? asyncSetup,
+    void Function(T crdt)? syncTearDown,
+    Future<void> Function(T crdt)? asyncTearDown}) {
   group('Basic', () {
-    T crdt;
+    late T crdt;
 
     setUp(() async {
-      crdt = syncSetup != null ? syncSetup() : await asyncSetup();
+      crdt = syncSetup != null ? syncSetup() : await asyncSetup!();
     });
 
     test('Node ID', () {
@@ -93,19 +93,19 @@ void crdtTests<T extends Crdt<String, int>>(String nodeId,
   });
 
   group('Watch', () {
-    T crdt;
+    late T crdt;
 
     setUp(() async {
-      crdt = syncSetup != null ? syncSetup() : await asyncSetup();
+      crdt = syncSetup != null ? syncSetup() : await asyncSetup!();
     });
 
     test('All changes', () async {
       final streamTest = expectLater(
           crdt.watch(),
           emitsInAnyOrder([
-            (MapEntry<String, int> event) =>
+            (MapEntry<String, int?> event) =>
                 event.key == 'x' && event.value == 1,
-            (MapEntry<String, int> event) =>
+            (MapEntry<String, int?> event) =>
                 event.key == 'y' && event.value == 2,
           ]));
       crdt.put('x', 1);

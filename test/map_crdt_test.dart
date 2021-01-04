@@ -14,7 +14,7 @@ void main() {
   crdtTests<MapCrdt<String, int>>('abc', syncSetup: () => MapCrdt('abc'));
 
   group('Seed', () {
-    Crdt crdt;
+    late Crdt crdt;
 
     setUp(() {
       crdt = MapCrdt('abc', {'x': Record(hlcNow, 1, hlcNow)});
@@ -31,7 +31,7 @@ void main() {
   });
 
   group('Merge', () {
-    Crdt<String, int> crdt;
+    late Crdt<String, int> crdt;
 
     setUp(() {
       crdt = MapCrdt('abc');
@@ -64,7 +64,7 @@ void main() {
 
     test('Merge same', () {
       crdt.put('x', 2);
-      final remoteTs = crdt.getRecord('x').hlc;
+      final remoteTs = crdt.getRecord('x')!.hlc;
       crdt.merge({'x': Record(remoteTs, 1, hlcNow)});
       expect(crdt.get('x'), 2);
     });
@@ -77,7 +77,7 @@ void main() {
 
     test('Merge same, newer counter', () {
       crdt.put('x', 1);
-      final remoteTs = Hlc(crdt.getRecord('x').hlc.millis, 2, 'xyz');
+      final remoteTs = Hlc(crdt.getRecord('x')!.hlc.millis, 2, 'xyz');
       crdt.merge({'x': Record(remoteTs, 2, hlcNow)});
       expect(crdt.get('x'), 2);
     });
@@ -201,7 +201,7 @@ void main() {
   });
 
   group('Delta subsets', () {
-    Crdt crdt;
+    late Crdt crdt;
     final hlc1 = Hlc(_millis, 0, 'abc');
     final hlc2 = Hlc(_millis + 1, 0, 'abc');
     final hlc3 = Hlc(_millis + 2, 0, 'abc');
@@ -235,9 +235,9 @@ void main() {
   });
 
   group('Delta sync', () {
-    Crdt crdtA;
-    Crdt crdtB;
-    Crdt crdtC;
+    late Crdt crdtA;
+    late Crdt crdtB;
+    late Crdt crdtC;
 
     setUp(() {
       crdtA = MapCrdt('a');

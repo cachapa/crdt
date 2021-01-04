@@ -18,8 +18,6 @@ class Hlc<T> implements Comparable<Hlc> {
   Hlc(int millis, this.counter, this.nodeId)
       : assert(counter <= _maxCounter),
         assert(nodeId is Comparable),
-        assert(millis != null),
-        assert(counter != null),
         assert(nodeId != null),
         // Detect microseconds and convert to millis
         millis = millis < 0x0001000000000000 ? millis : millis ~/ 1000;
@@ -34,7 +32,7 @@ class Hlc<T> implements Comparable<Hlc> {
   Hlc.fromLogicalTime(logicalTime, T nodeId)
       : this(logicalTime >> _shift, logicalTime & _maxCounter, nodeId);
 
-  factory Hlc.parse(String timestamp, [T Function(String value) idDecoder]) {
+  factory Hlc.parse(String timestamp, [T Function(String value)? idDecoder]) {
     final counterDash = timestamp.indexOf('-', timestamp.lastIndexOf(':'));
     final nodeIdDash = timestamp.indexOf('-', counterDash + 1);
     final millis = DateTime.parse(timestamp.substring(0, counterDash))
@@ -42,16 +40,17 @@ class Hlc<T> implements Comparable<Hlc> {
     final counter =
         int.parse(timestamp.substring(counterDash + 1, nodeIdDash), radix: 16);
     final nodeId = timestamp.substring(nodeIdDash + 1);
-    return Hlc(millis, counter, idDecoder != null ? idDecoder(nodeId) : nodeId);
+    return Hlc(
+        millis, counter, idDecoder != null ? idDecoder(nodeId) : nodeId as T);
   }
 
-  Hlc apply({int millis, int counter, T nodeId}) => Hlc(
+  Hlc apply({int? millis, int? counter, T? nodeId}) => Hlc(
       millis ?? this.millis, counter ?? this.counter, nodeId ?? this.nodeId);
 
   /// Generates a unique, monotonic timestamp suitable for transmission to
   /// another system in string format. Local wall time will be used if
   /// [millis] isn't supplied.
-  factory Hlc.send(Hlc<T> canonical, {int millis}) {
+  factory Hlc.send(Hlc<T> canonical, {int? millis}) {
     // Retrieve the local wall time if millis is null
     millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 
@@ -80,7 +79,7 @@ class Hlc<T> implements Comparable<Hlc> {
   /// canonical timestamp to preserve monotonicity.
   /// Returns an updated canonical timestamp instance.
   /// Local wall time will be used if [millis] isn't supplied.
-  factory Hlc.recv(Hlc<T> canonical, Hlc<T> remote, {int millis}) {
+  factory Hlc.recv(Hlc<T> canonical, Hlc<T> remote, {int? millis}) {
     // Retrieve the local wall time if millis is null
     millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 

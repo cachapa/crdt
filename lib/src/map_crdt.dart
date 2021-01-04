@@ -8,7 +8,7 @@ import 'record.dart';
 /// Useful for testing, or for applications which only require temporary datasets.
 class MapCrdt<K, V> extends Crdt<K, V> {
   final _map = <K, Record<V>>{};
-  final _controller = StreamController<MapEntry<K, V>>.broadcast();
+  final _controller = StreamController<MapEntry<K, V?>>.broadcast();
 
   @override
   final dynamic nodeId;
@@ -21,7 +21,7 @@ class MapCrdt<K, V> extends Crdt<K, V> {
   bool containsKey(K key) => _map.containsKey(key);
 
   @override
-  Record<V> getRecord(K key) => _map[key];
+  Record<V>? getRecord(K key) => _map[key];
 
   @override
   void putRecord(K key, Record<V> value) {
@@ -39,12 +39,12 @@ class MapCrdt<K, V> extends Crdt<K, V> {
   }
 
   @override
-  Map<K, Record<V>> recordMap({Hlc modifiedSince}) =>
+  Map<K, Record<V>> recordMap({Hlc? modifiedSince}) =>
       Map<K, Record<V>>.from(_map)
         ..removeWhere((_, record) =>
             record.modified.logicalTime < (modifiedSince?.logicalTime ?? 0));
 
   @override
-  Stream<MapEntry<K, V>> watch({K key}) =>
+  Stream<MapEntry<K, V?>> watch({K? key}) =>
       _controller.stream.where((event) => key == null || key == event.key);
 }

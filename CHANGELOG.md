@@ -1,3 +1,6 @@
+## 4.0.0
+- Migrate to Dart null safety
+
 ## 3.0.0
 - Use milliseconds instead of microseconds for HLCs
 - Allow using non-string node ids

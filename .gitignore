@@ -9,7 +9,7 @@ pubspec.lock
 
 # IDE local settings
 .atom/
-.idea
+.idea/
 .vscode/
 
 # MacOS garbage

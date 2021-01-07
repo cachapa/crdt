@@ -4,7 +4,7 @@ import 'mask/mask.dart';
 
 const _microsClearLSBs = 4;
 const _maxCounter = 0xFFFF;
-const _maxDrift = 60000000; // 1h in µs
+const _maxDrift = 60000000; // 1m in µs
 
 // Used to disambiguate otherwise equal HLCs deterministically.
 // In this case, node ids with a lower string comparison win.
@@ -158,7 +158,7 @@ class ClockDriftException implements Exception {
       : drift = microsTs - microsWall;
 
   @override
-  String toString() => 'Clock drift of $drift ms exceeds maximum ($_maxDrift)';
+  String toString() => 'Clock drift of $drift µs exceeds maximum ($_maxDrift)';
 }
 
 class OverflowException implements Exception {

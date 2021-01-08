@@ -150,8 +150,8 @@ void main() {
 
     test('Fail on counter overflow', () {
       final hlc = Hlc(1579633503119, 0xFFFF, 'abc');
-      expect(() => Hlc.send(hlc, millis: 1579633403129),
-          throwsA(isA<ClockDriftException>()));
+      expect(() => Hlc.send(hlc, millis: 1579633503119),
+          throwsA(isA<OverflowException>()));
     });
   });
 
@@ -182,16 +182,22 @@ void main() {
       expect(hlc, Hlc(1579633513129, 0, canonical.nodeId));
     });
 
+    test('Fail on node id', () {
+      final remote = Hlc.parse('2020-01-21T19:05:03.110Z-0000-abc');
+      expect(() => Hlc.recv(canonical, remote, millis: 1579633403129),
+          throwsA(isA<DuplicateNodeException>()));
+    });
+
     test('Fail on clock drift', () {
       final remote = Hlc.parse('2020-01-21T19:05:04.110Z-0000-abcd');
       expect(() => Hlc.recv(canonical, remote, millis: 1579633403129),
           throwsA(isA<ClockDriftException>()));
     });
 
-    test('Fail on node id', () {
-      final remote = Hlc.parse('2020-01-21T19:05:03.110Z-0000-abc');
-      expect(() => Hlc.recv(canonical, remote, millis: 1579633403129),
-          throwsA(isA<DuplicateNodeException>()));
+    test('Fail on counter overflow', () {
+      final remote = Hlc.parse('2020-01-21T19:05:03.110Z-FFFF-abcd');
+      expect(() => Hlc.recv(canonical, remote, millis: 1579633503110),
+          throwsA(isA<OverflowException>()));
     });
   });
 }

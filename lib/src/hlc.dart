@@ -20,7 +20,7 @@ class Hlc implements Comparable<Hlc> {
   int get logicalTime => (millis << _shift) + counter;
 
   Hlc(this.millis, this.counter, this.nodeId)
-      : assert(millis < 0x000F000000000000),
+      : assert(millis < 0x0001000000000000),
         // Sanity check: ensure time in millis, not micros
         assert(counter <= _maxCounter),
         assert(millis != null),

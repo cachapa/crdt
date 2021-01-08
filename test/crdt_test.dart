@@ -103,7 +103,7 @@ void main() {
 
   group('Merge', () {
     CrdtMap<String, int> crdt;
-    final now = DateTime.now().microsecondsSinceEpoch;
+    final now = DateTime.now().millisecondsSinceEpoch;
 
     setUp(() {
       crdt = CrdtMap('abc');
@@ -111,19 +111,19 @@ void main() {
 
     test('Merge older', () {
       crdt.put('x', 2);
-      crdt.merge({'x': Record(Hlc(now - 10000, 0, 'xyz'), 1, hlcNow)});
+      crdt.merge({'x': Record(Hlc(now - 1000, 0, 'xyz'), 1, hlcNow)});
       expect(crdt.get('x'), 2);
     });
 
     test('Merge very old', () {
       crdt.put('x', 2);
-      crdt.merge({'x': Record(Hlc(now - 1000000, 0, 'xyz'), 1, hlcNow)});
+      crdt.merge({'x': Record(Hlc(now - 1000, 0, 'xyz'), 1, hlcNow)});
       expect(crdt.get('x'), 2);
     });
 
     test('Merge newer', () {
       crdt.put('x', 1);
-      crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), 2, hlcNow)});
+      crdt.merge({'x': Record(Hlc(now + 1000, 0, 'xyz'), 2, hlcNow)});
       expect(crdt.get('x'), 2);
     });
 
@@ -142,13 +142,13 @@ void main() {
 
     test('Merge older, newer counter', () {
       crdt.put('x', 2);
-      crdt.merge({'x': Record(Hlc(now - 1000000, 2, 'xyz'), 1, hlcNow)});
+      crdt.merge({'x': Record(Hlc(now - 1000, 2, 'xyz'), 1, hlcNow)});
       expect(crdt.get('x'), 2);
     });
 
     test('Merge same, newer counter', () {
       crdt.put('x', 1);
-      final remoteTs = Hlc(crdt.getRecord('x').hlc.micros, 2, 'xyz');
+      final remoteTs = Hlc(crdt.getRecord('x').hlc.millis, 2, 'xyz');
       crdt.merge({'x': Record(remoteTs, 2, hlcNow)});
       expect(crdt.get('x'), 2);
     });
@@ -161,13 +161,13 @@ void main() {
 
     test('Merge deleted item', () {
       crdt.put('x', 1);
-      crdt.merge({'x': Record(Hlc(now + 1000000, 0, 'xyz'), null, hlcNow)});
+      crdt.merge({'x': Record(Hlc(now + 1000, 0, 'xyz'), null, hlcNow)});
       expect(crdt.isDeleted('x'), isTrue);
     });
 
     test('Update HLC on merge', () {
       crdt.put('x', 1);
-      crdt.merge({'y': Record(Hlc(now - 1000000, 0, 'xyz'), 2, hlcNow)});
+      crdt.merge({'y': Record(Hlc(now - 1000, 0, 'xyz'), 2, hlcNow)});
       expect(crdt.values, [1, 2]);
     });
   });
@@ -186,7 +186,7 @@ void main() {
         'x': Record(Hlc(1579633503110, 0, 'abc'), 1, hlcNow),
       });
       expect(crdt.toJson(),
-          '{"x":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":1}}');
+          '{"x":{"hlc":"2020-01-21T19:05:03.110Z-0000-abc","value":1}}');
     });
 
     test('jsonEncodeIntKey', () {
@@ -194,16 +194,16 @@ void main() {
         1: Record(Hlc(1579633503110, 0, 'abc'), 1, hlcNow),
       });
       expect(crdt.toJson(),
-          '{"1":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":1}}');
+          '{"1":{"hlc":"2020-01-21T19:05:03.110Z-0000-abc","value":1}}');
     });
 
     test('jsonEncodeDateTimeKey', () {
       final crdt = CrdtMap<DateTime, int>('abc', {
-        DateTime(1974, 04, 25, 00, 20):
+        DateTime(2000, 01, 01, 01, 20):
             Record(Hlc(1579633503110, 0, 'abc'), 1, hlcNow),
       });
       expect(crdt.toJson(),
-          '{"1974-04-25 00:20:00.000":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":1}}');
+          '{"2000-01-01 01:20:00.000":{"hlc":"2020-01-21T19:05:03.110Z-0000-abc","value":1}}');
     });
 
     test('jsonEncodeCustomClassValue', () {
@@ -211,13 +211,13 @@ void main() {
         'x': Record(Hlc(1579633503110, 0, 'abc'), TestClass('test'), hlcNow),
       });
       expect(crdt.toJson(),
-          '{"x":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":{"test":"test"}}}');
+          '{"x":{"hlc":"2020-01-21T19:05:03.110Z-0000-abc","value":{"test":"test"}}}');
     });
 
     test('jsonDecodeStringKey', () {
       final crdt = CrdtMap<String, int>('abc');
       final map = CrdtJson.decode<String, int>(
-          '{"x":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":1}}',
+          '{"x":{"hlc":"2020-01-21T19:05:03.110Z-0000-abc","value":1}}',
           hlcNow);
       crdt.putRecords(map);
       expect(crdt.recordMap(),
@@ -227,8 +227,7 @@ void main() {
     test('jsonDecodeIntKey', () {
       final crdt = CrdtMap<int, int>('abc');
       final map = CrdtJson.decode<int, int>(
-          '{"1":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":1}}',
-          hlcNow,
+          '{"1":{"hlc":"2020-01-21T19:05:03.110Z-0000-abc","value":1}}', hlcNow,
           keyDecoder: (key) => int.parse(key));
       crdt.putRecords(map);
       expect(crdt.recordMap(),
@@ -238,12 +237,12 @@ void main() {
     test('jsonDecodeDateTimeKey', () {
       final crdt = CrdtMap<DateTime, int>('abc');
       final map = CrdtJson.decode<DateTime, int>(
-          '{"1974-04-25 00:20:00.000":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":1}}',
+          '{"2000-01-01 01:20:00.000":{"hlc":"2020-01-21T19:05:03.110Z-0000-abc","value":1}}',
           hlcNow,
           keyDecoder: (key) => DateTime.parse(key));
       crdt.putRecords(map);
       expect(crdt.recordMap(), {
-        DateTime(1974, 04, 25, 00, 20):
+        DateTime(2000, 01, 01, 01, 20):
             Record(Hlc(1579633503110, 0, 'abc'), 1, hlcNow)
       });
     });
@@ -251,7 +250,7 @@ void main() {
     test('jsonDecodeCustomClassValue', () {
       final crdt = CrdtMap<String, TestClass>('abc');
       final map = CrdtJson.decode<String, TestClass>(
-          '{"x":{"hlc":"1970-01-19T06:47:13.475584Z-0000-abc","value":{"test":"test"}}}',
+          '{"x":{"hlc":"2020-01-21T19:05:03.110Z-0000-abc","value":{"test":"test"}}}',
           hlcNow,
           valueDecoder: (key, value) => TestClass.fromJson(value));
       crdt.putRecords(map);

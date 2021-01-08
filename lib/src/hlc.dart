@@ -1,10 +1,8 @@
 import 'dart:math';
 
-import 'mask/mask.dart';
-
-const _microsClearLSBs = 4;
+const _shift = 16;
 const _maxCounter = 0xFFFF;
-const _maxDrift = 60000000; // 1m in µs
+const _maxDrift = 60000; // 1 minute in ms
 
 // Used to disambiguate otherwise equal HLCs deterministically.
 // In this case, node ids with a lower string comparison win.
@@ -15,107 +13,104 @@ Comparator<String> _idDisambiguator = (s1, s2) => s2.compareTo(s1);
 /// clock in distributed systems.
 /// Inspiration: https://cse.buffalo.edu/tech-reports/2014-04.pdf
 class Hlc implements Comparable<Hlc> {
-  final int micros;
+  final int millis;
   final int counter;
   final String nodeId;
 
-  int get logicalTime =>
-      clearLeastSignificantBytes(micros, _microsClearLSBs) + counter;
+  int get logicalTime => (millis << _shift) + counter;
 
-  Hlc(int micros, this.counter, this.nodeId)
-      : micros = clearLeastSignificantBytes(micros, _microsClearLSBs),
+  Hlc(this.millis, this.counter, this.nodeId)
+      : assert(millis < 0x000F000000000000),
+        // Sanity check: ensure time in millis, not micros
         assert(counter <= _maxCounter),
-        assert(micros != null),
+        assert(millis != null),
         assert(counter != null),
         assert(nodeId != null);
 
   Hlc.zero(String nodeId) : this(0, 0, nodeId);
 
   Hlc.fromDate(DateTime dateTime, String nodeId)
-      : this(dateTime.microsecondsSinceEpoch, 0, nodeId);
+      : this(dateTime.millisecondsSinceEpoch, 0, nodeId);
 
   Hlc.now(String nodeId) : this.fromDate(DateTime.now(), nodeId);
 
   Hlc.fromLogicalTime(logicalTime, String nodeId)
-      : this(clearLeastSignificantBytes(logicalTime, _microsClearLSBs),
-            logicalTime & _maxCounter, nodeId);
+      : this(logicalTime >> _shift, logicalTime & _maxCounter, nodeId);
 
   factory Hlc.parse(String timestamp) {
     final counterDash = timestamp.indexOf('-', timestamp.lastIndexOf(':'));
     final nodeIdDash = timestamp.indexOf('-', counterDash + 1);
-    final micros = DateTime.parse(timestamp.substring(0, counterDash))
-        .microsecondsSinceEpoch;
+    final millis = DateTime.parse(timestamp.substring(0, counterDash))
+        .millisecondsSinceEpoch;
     final counter =
         int.parse(timestamp.substring(counterDash + 1, nodeIdDash), radix: 16);
     final nodeId = timestamp.substring(nodeIdDash + 1);
-    return Hlc(micros, counter, nodeId);
+    return Hlc(millis, counter, nodeId);
   }
 
-  Hlc apply({int micros, int counter, String nodeId}) => Hlc(
-      micros ?? this.micros, counter ?? this.counter, nodeId ?? this.nodeId);
+  Hlc apply({int millis, int counter, String nodeId}) => Hlc(
+      millis ?? this.millis, counter ?? this.counter, nodeId ?? this.nodeId);
 
   /// Generates a unique, monotonic timestamp suitable for transmission to
   /// another system in string format. Local wall time will be used if
-  /// [micros] isn't supplied.
-  factory Hlc.send(Hlc canonical, {int micros}) {
-    // Retrieve the local wall time if micros is null
-    micros = clearLeastSignificantBytes(
-        micros ?? DateTime.now().microsecondsSinceEpoch, _microsClearLSBs);
+  /// [millis] isn't supplied.
+  factory Hlc.send(Hlc canonical, {int millis}) {
+    // Retrieve the local wall time if millis is null
+    millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 
     // Unpack the canonical time and counter
-    final microsOld = canonical.micros;
+    final millisOld = canonical.millis;
     final counterOld = canonical.counter;
 
     // Calculate the next time and counter
     // * ensure that the logical time never goes backward
     // * increment the counter if time does not advance
-    final microsNew = max(microsOld, micros);
-    final counterNew = microsOld == microsNew ? counterOld + 1 : 0;
+    final millisNew = max(millisOld, millis);
+    final counterNew = millisOld == millisNew ? counterOld + 1 : 0;
 
     // Check the result for drift and counter overflow
-    if (microsNew - micros > _maxDrift) {
-      throw ClockDriftException(microsNew, micros);
+    if (millisNew - millis > _maxDrift) {
+      throw ClockDriftException(millisNew, millis);
     }
     if (counterNew > _maxCounter) {
       throw OverflowException(counterNew);
     }
 
-    return Hlc(microsNew, counterNew, canonical.nodeId);
+    return Hlc(millisNew, counterNew, canonical.nodeId);
   }
 
   /// Compares and validates a timestamp from a remote system with the local
   /// canonical timestamp to preserve monotonicity.
   /// Returns an updated canonical timestamp instance.
-  /// Local wall time will be used if [micros] isn't supplied.
-  factory Hlc.recv(Hlc canonical, Hlc remote, {int micros}) {
-    // Retrieve the local wall time if micros is null
-    micros = clearLeastSignificantBytes(
-        micros ?? DateTime.now().microsecondsSinceEpoch, _microsClearLSBs);
+  /// Local wall time will be used if [millis] isn't supplied.
+  factory Hlc.recv(Hlc canonical, Hlc remote, {int millis}) {
+    // Retrieve the local wall time if millis is null
+    millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 
     // Assert the node id
     if (canonical.nodeId == remote.nodeId) {
       throw DuplicateNodeException(canonical.nodeId);
     }
     // Assert the remote clock drift
-    if (remote.micros - micros > _maxDrift) {
-      throw ClockDriftException(remote.micros, micros);
+    if (remote.millis - millis > _maxDrift) {
+      throw ClockDriftException(remote.millis, millis);
     }
 
     // No need to do any more work if the canonical logical time is higher
     if (canonical.logicalTime > remote.logicalTime) return canonical;
 
     // Ensure that new canonical time is higher than the remote
-    final microsNew = max(micros, remote.micros);
-    final counterNew = microsNew == remote.micros ? remote.counter + 1 : 0;
+    final millisNew = max(millis, remote.millis);
+    final counterNew = millisNew == remote.millis ? remote.counter + 1 : 0;
 
-    return Hlc(microsNew, counterNew, canonical.nodeId);
+    return Hlc(millisNew, counterNew, canonical.nodeId);
   }
 
   String toJson() => toString();
 
   @override
   String toString() =>
-      '${DateTime.fromMicrosecondsSinceEpoch(micros, isUtc: true).toIso8601String()}'
+      '${DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true).toIso8601String()}'
       '-${counter.toRadixString(16).toUpperCase().padLeft(4, '0')}'
       '-$nodeId';
 
@@ -154,11 +149,11 @@ class Hlc implements Comparable<Hlc> {
 class ClockDriftException implements Exception {
   final int drift;
 
-  ClockDriftException(int microsTs, int microsWall)
-      : drift = microsTs - microsWall;
+  ClockDriftException(int millisTs, int millisWall)
+      : drift = millisTs - millisWall;
 
   @override
-  String toString() => 'Clock drift of $drift µs exceeds maximum ($_maxDrift)';
+  String toString() => 'Clock drift of $drift ms exceeds maximum ($_maxDrift)';
 }
 
 class OverflowException implements Exception {

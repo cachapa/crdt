@@ -4,13 +4,13 @@ import 'package:test/test.dart';
 void main() {
   group('String operations', () {
     test('hlc to string', () {
-      final hlc = Hlc.parse('2020-01-01T10:00:00.088064Z-0042-abc');
-      expect(hlc.toString(), '2020-01-01T10:00:00.088064Z-0042-abc');
+      final hlc = Hlc.parse('2020-01-01T10:00:00.088Z-0042-abc');
+      expect(hlc.toString(), '2020-01-01T10:00:00.088Z-0042-abc');
     });
 
     test('Parse hlc', () {
       expect(Hlc.parse('2020-01-01T10:00:00.089Z-0042-abc'),
-          Hlc(1577872800088064, 0x42, 'abc'));
+          Hlc(1577872800089, 0x42, 'abc'));
     });
   });
 
@@ -98,54 +98,59 @@ void main() {
   });
 
   group('Logical time representation', () {
+    test('Logical time stability', () {
+      final hlc = Hlc.fromLogicalTime(1579633503110, 'abc');
+      expect(hlc.logicalTime, 1579633503110);
+    });
+
     test('Hlc as logical time', () {
       final hlc = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abc');
-      expect(hlc.logicalTime, 1579633503109186);
+      expect(hlc.logicalTime, 103522861259817026);
     });
 
     test('Hlc from logical time', () {
       final hlc = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abc');
-      expect(Hlc.fromLogicalTime(1579633503109186, 'abc'), hlc);
+      expect(Hlc.fromLogicalTime(103522861259817026, 'abc'), hlc);
     });
   });
 
   group('Send', () {
     test('Higher canonical time', () {
       final hlc = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abc');
-      final sendHlc = Hlc.send(hlc, micros: 1579633503110000);
+      final sendHlc = Hlc.send(hlc, millis: 1579633503109);
       expect(sendHlc, isNot(hlc));
-      expect(sendHlc.micros, hlc.micros);
+      expect(sendHlc.millis, hlc.millis);
       expect(sendHlc.counter, 0x43);
       expect(sendHlc.nodeId, hlc.nodeId);
     });
 
     test('Equal canonical time', () {
-      final hlc = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abc');
-      final sendHlc = Hlc.send(hlc, micros: 1579633503109120);
+      final hlc = Hlc(1579633503110, 0x42, 'abc');
+      final sendHlc = Hlc.send(hlc, millis: 1579633503110);
       expect(sendHlc, isNot(hlc));
-      expect(sendHlc.micros, 1579633503109120);
+      expect(sendHlc.millis, 1579633503110);
       expect(sendHlc.counter, 0x43);
       expect(sendHlc.nodeId, hlc.nodeId);
     });
 
     test('Lower canonical time', () {
       final hlc = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abc');
-      final sendHlc = Hlc.send(hlc, micros: 1579633513070592);
+      final sendHlc = Hlc.send(hlc, millis: 1579633513070);
       expect(sendHlc, isNot(hlc));
-      expect(sendHlc.micros, 1579633513070592);
+      expect(sendHlc.millis, 1579633513070);
       expect(sendHlc.counter, 0);
       expect(sendHlc.nodeId, hlc.nodeId);
     });
 
     test('Fail on clock drift', () {
-      final hlc = Hlc(1579633503119000, 0, 'abc');
-      expect(() => Hlc.send(hlc, micros: 1579633403129000),
+      final hlc = Hlc(1579633503119, 0, 'abc');
+      expect(() => Hlc.send(hlc, millis: 1579633403129),
           throwsA(isA<ClockDriftException>()));
     });
 
     test('Fail on counter overflow', () {
-      final hlc = Hlc(1579633503119000, 0xFFFF, 'abc');
-      expect(() => Hlc.send(hlc, micros: 1579633403129000),
+      final hlc = Hlc(1579633503119, 0xFFFF, 'abc');
+      expect(() => Hlc.send(hlc, millis: 1579633403129),
           throwsA(isA<ClockDriftException>()));
     });
   });
@@ -155,37 +160,37 @@ void main() {
 
     test('Higher canonical time', () {
       final remote = Hlc.parse('2020-01-21T19:05:03.110Z-0000-abcd');
-      final hlc = Hlc.recv(canonical, remote, micros: 1579633503119000);
+      final hlc = Hlc.recv(canonical, remote, millis: 1579633503119);
       expect(hlc, equals(canonical));
     });
 
     test('Same remote time', () {
       final remote = Hlc.parse('2020-01-21T19:05:03.110Z-0042-abcd');
-      final hlc = Hlc.recv(canonical, remote, micros: 1579633503119000);
-      expect(hlc, Hlc(remote.micros, remote.counter + 1, canonical.nodeId));
+      final hlc = Hlc.recv(canonical, remote, millis: 1579633503110);
+      expect(hlc, Hlc(remote.millis, remote.counter + 1, canonical.nodeId));
     });
 
     test('Higher remote time', () {
       final remote = Hlc.parse('2020-01-21T19:05:04.110Z-0000-abcd');
-      final hlc = Hlc.recv(canonical, remote, micros: 1579633503119000);
-      expect(hlc, Hlc(remote.micros, remote.counter + 1, canonical.nodeId));
+      final hlc = Hlc.recv(canonical, remote, millis: 1579633503119);
+      expect(hlc, Hlc(remote.millis, remote.counter + 1, canonical.nodeId));
     });
 
     test('Higher wall clock time', () {
       final remote = Hlc.parse('2020-01-21T19:05:04.110Z-0000-abcd');
-      final hlc = Hlc.recv(canonical, remote, micros: 1579633513129000);
-      expect(hlc, Hlc(1579633513129000, 0, canonical.nodeId));
+      final hlc = Hlc.recv(canonical, remote, millis: 1579633513129);
+      expect(hlc, Hlc(1579633513129, 0, canonical.nodeId));
     });
 
     test('Fail on clock drift', () {
       final remote = Hlc.parse('2020-01-21T19:05:04.110Z-0000-abcd');
-      expect(() => Hlc.recv(canonical, remote, micros: 1579633403129000),
+      expect(() => Hlc.recv(canonical, remote, millis: 1579633403129),
           throwsA(isA<ClockDriftException>()));
     });
 
     test('Fail on node id', () {
       final remote = Hlc.parse('2020-01-21T19:05:03.110Z-0000-abc');
-      expect(() => Hlc.recv(canonical, remote, micros: 1579633403129000),
+      expect(() => Hlc.recv(canonical, remote, millis: 1579633403129),
           throwsA(isA<DuplicateNodeException>()));
     });
   });

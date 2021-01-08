@@ -1,3 +1,6 @@
+## 3.0.0-pre.1
+- Use milliseconds instead of microseconds for HLCs
+
 ## 3.0.0-pre.0
 - Add `modified` field to `Record`
 - Add optional parameter `modifiedSince` to 'recordMap'

@@ -103,6 +103,10 @@ class Hlc implements Comparable<Hlc> {
     final millisNew = max(millis, remote.millis);
     final counterNew = millisNew == remote.millis ? remote.counter + 1 : 0;
 
+    if (counterNew > _maxCounter) {
+      throw OverflowException(counterNew);
+    }
+
     return Hlc(millisNew, counterNew, canonical.nodeId);
   }
 

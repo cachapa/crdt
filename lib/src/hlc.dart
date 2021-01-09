@@ -96,18 +96,10 @@ class Hlc implements Comparable<Hlc> {
       throw ClockDriftException(remote.millis, millis);
     }
 
-    // No need to do any more work if the canonical logical time is higher
-    if (canonical.logicalTime > remote.logicalTime) return canonical;
+    // No need to do any more work if the remote logical time is lower or same
+    if (canonical.logicalTime >= remote.logicalTime) return canonical;
 
-    // Ensure that new canonical time is higher than the remote
-    final millisNew = max(millis, remote.millis);
-    final counterNew = millisNew == remote.millis ? remote.counter + 1 : 0;
-
-    if (counterNew > _maxCounter) {
-      throw OverflowException(counterNew);
-    }
-
-    return Hlc(millisNew, counterNew, canonical.nodeId);
+    return Hlc.fromLogicalTime(remote.logicalTime, canonical.nodeId);
   }
 
   String toJson() => toString();

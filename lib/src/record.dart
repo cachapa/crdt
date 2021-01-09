@@ -6,6 +6,8 @@ typedef ValueEncoder<K, V> = dynamic Function(K key, V value);
 typedef KeyDecoder<K> = K Function(String key);
 typedef ValueDecoder<V> = V Function(String key, dynamic value);
 
+typedef NodeIdDecoder = dynamic Function(String nodeId);
+
 /// Stores a value associated with a given HLC
 class Record<V> {
   final Hlc hlc;
@@ -17,8 +19,8 @@ class Record<V> {
   Record(this.hlc, this.value, this.modified);
 
   Record.fromJson(dynamic key, Map<String, dynamic> map, this.modified,
-      [ValueDecoder<V> valueDecoder])
-      : hlc = Hlc.parse(map['hlc']),
+      {ValueDecoder<V> valueDecoder, NodeIdDecoder nodeIdDecoder})
+      : hlc = Hlc.parse(map['hlc'], nodeIdDecoder),
         value = valueDecoder == null || map['value'] == null
             ? map['value']
             : valueDecoder(key, map['value']);

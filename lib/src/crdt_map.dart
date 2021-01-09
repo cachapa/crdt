@@ -8,7 +8,7 @@ class CrdtMap<K, V> extends Crdt<K, V> {
   final _map = <K, Record<V>>{};
 
   @override
-  final String nodeId;
+  final dynamic nodeId;
 
   CrdtMap(this.nodeId, [Map<K, Record<V>> seed = const {}]) {
     _map.addAll(seed);

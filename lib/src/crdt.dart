@@ -10,7 +10,7 @@ abstract class Crdt<K, V> {
 
   Hlc get canonicalTime => _canonicalTime;
 
-  String get nodeId;
+  dynamic get nodeId;
 
   /// Returns [true] if CRDT has any non-deleted records.
   bool get isEmpty => map.isEmpty;

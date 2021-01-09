@@ -10,11 +10,22 @@ void main() {
     test('hlc to string', () {
       final hlc = Hlc.parse('$_isoTime-0042-abc');
       expect(hlc.toString(), '$_isoTime-0042-abc');
-      print(hlc.logicalTime);
     });
 
     test('Parse hlc', () {
       expect(Hlc.parse('$_isoTime-0042-abc'), Hlc(_millis, 0x42, 'abc'));
+    });
+  });
+
+  group('Non-String node id', () {
+    test('to hlc', () {
+      final hlc = Hlc<int>.parse('$_isoTime-0042-1', int.parse);
+      expect(hlc, Hlc<int>(_millis, 0x42, 1));
+    });
+
+    test('to string', () {
+      final hlc = Hlc<int>(_millis, 0x42, 1);
+      expect(hlc.toString(), '$_isoTime-0042-1');
     });
   });
 
@@ -49,7 +60,7 @@ void main() {
 
     test('Less than node id', () {
       final hlc1 = Hlc.parse('$_isoTime-0042-abc');
-      final hlc2 = Hlc.parse('$_isoTime-0042-abd');
+      final hlc2 = Hlc.parse('$_isoTime-0042-abb');
       expect(hlc1 > hlc2, isTrue);
       expect(hlc1 >= hlc2, isTrue);
     });
@@ -82,7 +93,7 @@ void main() {
 
     test('More than node id', () {
       final hlc1 = Hlc(_millis, 0x42, 'abc');
-      final hlc2 = Hlc(_millis, 0x42, 'abcd');
+      final hlc2 = Hlc(_millis, 0x42, 'abb');
       expect(hlc1 > hlc2, isTrue);
       expect(hlc1 >= hlc2, isTrue);
     });
@@ -93,11 +104,11 @@ void main() {
 
       expect(hlc.compareTo(Hlc(_millis + 1, 0x42, 'abc')), -1);
       expect(hlc.compareTo(Hlc(_millis, 0x43, 'abc')), -1);
-      expect(hlc.compareTo(Hlc(_millis, 0x42, 'abb')), -1);
+      expect(hlc.compareTo(Hlc(_millis, 0x42, 'abd')), -1);
 
       expect(hlc.compareTo(Hlc(_millis - 1, 0x42, 'abc')), 1);
       expect(hlc.compareTo(Hlc(_millis, 0x41, 'abc')), 1);
-      expect(hlc.compareTo(Hlc(_millis, 0x42, 'abd')), 1);
+      expect(hlc.compareTo(Hlc(_millis, 0x42, 'abb')), 1);
     });
   });
 

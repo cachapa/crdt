@@ -4,40 +4,37 @@ const _shift = 16;
 const _maxCounter = 0xFFFF;
 const _maxDrift = 60000; // 1 minute in ms
 
-// Used to disambiguate otherwise equal HLCs deterministically.
-// In this case, node ids with a lower string comparison win.
-Comparator<String> _idDisambiguator = (s1, s2) => s2.compareTo(s1);
-
 /// A Hybrid Logical Clock implementation.
 /// This class trades time precision for a guaranteed monotonically increasing
 /// clock in distributed systems.
 /// Inspiration: https://cse.buffalo.edu/tech-reports/2014-04.pdf
-class Hlc implements Comparable<Hlc> {
+class Hlc<T> implements Comparable<Hlc> {
   final int millis;
   final int counter;
-  final String nodeId;
+  final T nodeId;
 
   int get logicalTime => (millis << _shift) + counter;
 
   Hlc(this.millis, this.counter, this.nodeId)
-      : assert(millis < 0x0001000000000000),
-        // Sanity check: ensure time in millis, not micros
+      : // Sanity check: ensure time in millis, not micros
+        assert(millis < 0x0001000000000000),
         assert(counter <= _maxCounter),
+        assert(nodeId is Comparable),
         assert(millis != null),
         assert(counter != null),
         assert(nodeId != null);
 
-  Hlc.zero(String nodeId) : this(0, 0, nodeId);
+  Hlc.zero(T nodeId) : this(0, 0, nodeId);
 
-  Hlc.fromDate(DateTime dateTime, String nodeId)
+  Hlc.fromDate(DateTime dateTime, T nodeId)
       : this(dateTime.millisecondsSinceEpoch, 0, nodeId);
 
-  Hlc.now(String nodeId) : this.fromDate(DateTime.now(), nodeId);
+  Hlc.now(T nodeId) : this.fromDate(DateTime.now(), nodeId);
 
-  Hlc.fromLogicalTime(logicalTime, String nodeId)
+  Hlc.fromLogicalTime(logicalTime, T nodeId)
       : this(logicalTime >> _shift, logicalTime & _maxCounter, nodeId);
 
-  factory Hlc.parse(String timestamp) {
+  factory Hlc.parse(String timestamp, [T Function(String value) idDecoder]) {
     final counterDash = timestamp.indexOf('-', timestamp.lastIndexOf(':'));
     final nodeIdDash = timestamp.indexOf('-', counterDash + 1);
     final millis = DateTime.parse(timestamp.substring(0, counterDash))
@@ -45,7 +42,7 @@ class Hlc implements Comparable<Hlc> {
     final counter =
         int.parse(timestamp.substring(counterDash + 1, nodeIdDash), radix: 16);
     final nodeId = timestamp.substring(nodeIdDash + 1);
-    return Hlc(millis, counter, nodeId);
+    return Hlc(millis, counter, idDecoder != null ? idDecoder(nodeId) : nodeId);
   }
 
   Hlc apply({int millis, int counter, String nodeId}) => Hlc(
@@ -114,31 +111,20 @@ class Hlc implements Comparable<Hlc> {
   int get hashCode => toString().hashCode;
 
   @override
-  bool operator ==(other) =>
-      other is Hlc &&
-      logicalTime == other.logicalTime &&
-      nodeId == other.nodeId;
+  bool operator ==(other) => other is Hlc && compareTo(other) == 0;
 
-  bool operator <(other) =>
-      other is Hlc &&
-      (logicalTime < other.logicalTime ||
-          logicalTime == other.logicalTime &&
-              _idDisambiguator(nodeId, other.nodeId) < 0);
+  bool operator <(other) => other is Hlc && compareTo(other) < 0;
 
   bool operator <=(other) => this < other || this == other;
 
-  bool operator >(other) =>
-      other is Hlc &&
-      (logicalTime > other.logicalTime ||
-          logicalTime == other.logicalTime &&
-              _idDisambiguator(nodeId, other.nodeId) > 0);
+  bool operator >(other) => other is Hlc && compareTo(other) > 0;
 
   bool operator >=(other) => this > other || this == other;
 
   @override
   int compareTo(Hlc other) {
     final time = logicalTime.compareTo(other.logicalTime);
-    return time == 0 ? _idDisambiguator(nodeId, other.nodeId) : time;
+    return time != 0 ? time : (nodeId as Comparable).compareTo(other.nodeId);
   }
 }
 

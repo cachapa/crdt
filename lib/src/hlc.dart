@@ -15,14 +15,14 @@ class Hlc<T> implements Comparable<Hlc> {
 
   int get logicalTime => (millis << _shift) + counter;
 
-  Hlc(this.millis, this.counter, this.nodeId)
-      : // Sanity check: ensure time in millis, not micros
-        assert(millis < 0x0001000000000000),
-        assert(counter <= _maxCounter),
+  Hlc(int millis, this.counter, this.nodeId)
+      : assert(counter <= _maxCounter),
         assert(nodeId is Comparable),
         assert(millis != null),
         assert(counter != null),
-        assert(nodeId != null);
+        assert(nodeId != null),
+        // Detect microseconds and convert to millis
+        millis = millis < 0x0001000000000000 ? millis : millis ~/ 1000;
 
   Hlc.zero(T nodeId) : this(0, 0, nodeId);
 

@@ -6,6 +6,37 @@ const _isoTime = '2001-09-09T01:46:40.000Z';
 const _logicalTime = 65536000000000066;
 
 void main() {
+  group('Constructors', () {
+    final hlc = Hlc(_millis, 0x42, 'abc');
+
+    test('default', () {
+      expect(hlc.millis, _millis);
+      expect(hlc.counter, 0x42);
+      expect(hlc.nodeId, 'abc');
+    });
+
+    test('default with microseconds', () {
+      expect(Hlc(_millis * 1000, 0x42, 'abc'), hlc);
+    });
+
+    test('zero', () {
+      expect(Hlc.zero('abc'), hlc.apply(millis: 0, counter: 0));
+    });
+
+    test('from date', () {
+      expect(
+          Hlc.fromDate(DateTime.parse(_isoTime), 'abc'), hlc.apply(counter: 0));
+    });
+
+    test('logical time', () {
+      expect(Hlc.fromLogicalTime(_logicalTime, 'abc'), hlc);
+    });
+
+    test('parse', () {
+      expect(Hlc.parse('$_isoTime-0042-abc'), hlc);
+    });
+  });
+
   group('String operations', () {
     test('hlc to string', () {
       final hlc = Hlc.parse('$_isoTime-0042-abc');

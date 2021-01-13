@@ -45,13 +45,13 @@ class Hlc<T> implements Comparable<Hlc> {
     return Hlc(millis, counter, idDecoder != null ? idDecoder(nodeId) : nodeId);
   }
 
-  Hlc apply({int millis, int counter, String nodeId}) => Hlc(
+  Hlc apply({int millis, int counter, T nodeId}) => Hlc(
       millis ?? this.millis, counter ?? this.counter, nodeId ?? this.nodeId);
 
   /// Generates a unique, monotonic timestamp suitable for transmission to
   /// another system in string format. Local wall time will be used if
   /// [millis] isn't supplied.
-  factory Hlc.send(Hlc canonical, {int millis}) {
+  factory Hlc.send(Hlc<T> canonical, {int millis}) {
     // Retrieve the local wall time if millis is null
     millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 
@@ -80,13 +80,13 @@ class Hlc<T> implements Comparable<Hlc> {
   /// canonical timestamp to preserve monotonicity.
   /// Returns an updated canonical timestamp instance.
   /// Local wall time will be used if [millis] isn't supplied.
-  factory Hlc.recv(Hlc canonical, Hlc remote, {int millis}) {
+  factory Hlc.recv(Hlc<T> canonical, Hlc<T> remote, {int millis}) {
     // Retrieve the local wall time if millis is null
     millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 
     // Assert the node id
     if (canonical.nodeId == remote.nodeId) {
-      throw DuplicateNodeException(canonical.nodeId);
+      throw DuplicateNodeException(canonical.nodeId.toString());
     }
     // Assert the remote clock drift
     if (remote.millis - millis > _maxDrift) {
@@ -96,7 +96,7 @@ class Hlc<T> implements Comparable<Hlc> {
     // No need to do any more work if the remote logical time is lower or same
     if (canonical.logicalTime >= remote.logicalTime) return canonical;
 
-    return Hlc.fromLogicalTime(remote.logicalTime, canonical.nodeId);
+    return Hlc<T>.fromLogicalTime(remote.logicalTime, canonical.nodeId);
   }
 
   String toJson() => toString();
@@ -111,13 +111,13 @@ class Hlc<T> implements Comparable<Hlc> {
   int get hashCode => toString().hashCode;
 
   @override
-  bool operator ==(other) => other is Hlc && compareTo(other) == 0;
+  bool operator ==(other) => other is Hlc<T> && compareTo(other) == 0;
 
-  bool operator <(other) => other is Hlc && compareTo(other) < 0;
+  bool operator <(other) => other is Hlc<T> && compareTo(other) < 0;
 
   bool operator <=(other) => this < other || this == other;
 
-  bool operator >(other) => other is Hlc && compareTo(other) > 0;
+  bool operator >(other) => other is Hlc<T> && compareTo(other) > 0;
 
   bool operator >=(other) => this > other || this == other;
 

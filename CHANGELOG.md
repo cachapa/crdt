@@ -1,3 +1,6 @@
+## 3.0.0-pre.3
+- Improve node id type handling
+
 ## 3.0.0-pre.2
 - Allow using non-string node ids
 - HLC constructor automatically detects microseconds and converts to milliseconds

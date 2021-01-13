@@ -33,7 +33,7 @@ void main() {
     });
 
     test('parse', () {
-      expect(Hlc.parse('$_isoTime-0042-abc'), hlc);
+      expect(Hlc<String>.parse('$_isoTime-0042-abc'), hlc);
     });
   });
 
@@ -44,18 +44,19 @@ void main() {
     });
 
     test('Parse hlc', () {
-      expect(Hlc.parse('$_isoTime-0042-abc'), Hlc(_millis, 0x42, 'abc'));
+      expect(
+          Hlc<String>.parse('$_isoTime-0042-abc'), Hlc(_millis, 0x42, 'abc'));
     });
   });
 
   group('Non-String node id', () {
     test('to hlc', () {
       final hlc = Hlc<int>.parse('$_isoTime-0042-1', int.parse);
-      expect(hlc, Hlc<int>(_millis, 0x42, 1));
+      expect(hlc, Hlc(_millis, 0x42, 1));
     });
 
     test('to string', () {
-      final hlc = Hlc<int>(_millis, 0x42, 1);
+      final hlc = Hlc(_millis, 0x42, 1);
       expect(hlc.toString(), '$_isoTime-0042-1');
     });
   });

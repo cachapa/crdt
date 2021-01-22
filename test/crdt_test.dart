@@ -104,6 +104,39 @@ void main() {
     });
   });
 
+  group('Watch', () {
+    CrdtMap crdt;
+
+    setUp(() {
+      crdt = CrdtMap<String, int>('abc');
+    });
+
+    test('All changes', () async {
+      final streamTest = expectLater(
+          crdt.watch(),
+          emitsInAnyOrder([
+                (MapEntry<String, int> event) =>
+            event.key == 'x' && event.value == 1,
+                (MapEntry<String, int> event) =>
+            event.key == 'y' && event.value == 2,
+          ]));
+      crdt.put('x', 1);
+      crdt.put('y', 2);
+      await streamTest;
+    });
+
+    test('Key', () async {
+      final streamTest = expectLater(
+          crdt.watch(key: 'y'),
+          emits(
+                (event) => event.key == 'y' && event.value == 2,
+          ));
+      crdt.put('x', 1);
+      crdt.put('y', 2);
+      await streamTest;
+    });
+  });
+
   group('Merge', () {
     CrdtMap<String, int> crdt;
 

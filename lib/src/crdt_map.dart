@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'crdt.dart';
 import 'hlc.dart';
 import 'record.dart';
@@ -6,6 +8,7 @@ import 'record.dart';
 /// Useful for testing, or for applications which only require temporary datasets.
 class CrdtMap<K, V> extends Crdt<K, V> {
   final _map = <K, Record<V>>{};
+  final _controller = StreamController<MapEntry<K, V>>.broadcast();
 
   @override
   final dynamic nodeId;
@@ -21,14 +24,27 @@ class CrdtMap<K, V> extends Crdt<K, V> {
   Record<V> getRecord(K key) => _map[key];
 
   @override
-  void putRecord(K key, Record<V> value) => _map[key] = value;
+  void putRecord(K key, Record<V> value) {
+    _map[key] = value;
+    _controller.add(MapEntry(key, value.value));
+  }
 
   @override
-  void putRecords(Map<K, Record<V>> recordMap) => _map.addAll(recordMap);
+  void putRecords(Map<K, Record<V>> recordMap) {
+    _map.addAll(recordMap);
+    recordMap
+        .map((key, value) => MapEntry(key, value.value))
+        .entries
+        .forEach(_controller.add);
+  }
 
   @override
   Map<K, Record<V>> recordMap({Hlc modifiedSince}) =>
       Map<K, Record<V>>.from(_map)
         ..removeWhere((_, record) =>
             record.modified.logicalTime < (modifiedSince?.logicalTime ?? 0));
+
+  @override
+  Stream<MapEntry<K, V>> watch({K key}) =>
+      _controller.stream.where((event) => key == null || key == event.key);
 }

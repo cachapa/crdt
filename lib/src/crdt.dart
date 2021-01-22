@@ -147,4 +147,8 @@ abstract class Crdt<K, V> {
   /// Use [modifiedSince] to get only the most recently modified records.
   /// See also [toJson()].
   Map<K, Record<V>> recordMap({Hlc modifiedSince});
+
+  /// Watch for changes to this CRDT.
+  /// Use [key] to monitor a specific key.
+  Stream<MapEntry<K, V>> watch({K key});
 }

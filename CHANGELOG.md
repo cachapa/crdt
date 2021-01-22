@@ -1,3 +1,6 @@
+## 3.0.0-pre.4
+- Add watch
+
 ## 3.0.0-pre.3
 - Improve node id type handling
 

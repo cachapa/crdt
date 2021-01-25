@@ -218,7 +218,7 @@ void main() {
     });
 
     test('Higher remote time', () {
-      final remote = Hlc(_millis + 1, 0x42, 'abcd');
+      final remote = Hlc(_millis + 1, 0, 'abcd');
       final hlc = Hlc.recv(canonical, remote, millis: _millis);
       expect(hlc, Hlc(remote.millis, remote.counter, canonical.nodeId));
     });
@@ -229,8 +229,18 @@ void main() {
       expect(hlc, canonical);
     });
 
+    test('Skip node id check if time is lower', () {
+      final remote = Hlc(_millis - 1, 0x42, 'abc');
+      expect(Hlc.recv(canonical, remote, millis: _millis), canonical);
+    });
+
+    test('Skip node id check if time is same', () {
+      final remote = Hlc(_millis, 0x42, 'abc');
+      expect(Hlc.recv(canonical, remote, millis: _millis), canonical);
+    });
+
     test('Fail on node id', () {
-      final remote = Hlc.parse('$_isoTime-0000-abc');
+      final remote = Hlc(_millis + 1, 0, 'abc');
       expect(() => Hlc.recv(canonical, remote, millis: _millis),
           throwsA(isA<DuplicateNodeException>()));
     });

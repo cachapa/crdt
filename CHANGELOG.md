@@ -1,3 +1,6 @@
+## 3.0.0-pre.5
+- Make basic tests easier to subclass
+
 ## 3.0.0-pre.4
 - Add watch
 

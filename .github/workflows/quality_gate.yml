@@ -16,6 +16,6 @@ jobs:
       - name: Get dependencies
         run: pub get
       - name: Static code analysis
-        run: dartanalyzer --fatal-infos --fatal-warnings .
+        run: dart analyze --fatal-infos
       - name: Run tests
         run: pub run test

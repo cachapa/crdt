@@ -70,11 +70,11 @@ abstract class Crdt<K, V> {
     final updatedRecords = <K, Record<V>>{};
 
     remoteRecords.forEach((key, remoteRecord) {
-      final localRecord = localRecords[key];
+      _canonicalTime = Hlc.recv(_canonicalTime, remoteRecord.hlc);
 
-      // Keep record if there's no local copy, or if local is older
+      // Keep record if there's no local copy, or if remote is newer
+      final localRecord = localRecords[key];
       if (localRecord == null || localRecord.hlc < remoteRecord.hlc) {
-        _canonicalTime = Hlc.recv(_canonicalTime, remoteRecord.hlc);
         updatedRecords[key] = remoteRecord;
       }
     });

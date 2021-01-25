@@ -84,6 +84,9 @@ class Hlc<T> implements Comparable<Hlc> {
     // Retrieve the local wall time if millis is null
     millis = millis ?? DateTime.now().millisecondsSinceEpoch;
 
+    // No need to do any more work if the remote logical time is lower
+    if (canonical.logicalTime >= remote.logicalTime) return canonical;
+
     // Assert the node id
     if (canonical.nodeId == remote.nodeId) {
       throw DuplicateNodeException(canonical.nodeId.toString());
@@ -92,9 +95,6 @@ class Hlc<T> implements Comparable<Hlc> {
     if (remote.millis - millis > _maxDrift) {
       throw ClockDriftException(remote.millis, millis);
     }
-
-    // No need to do any more work if the remote logical time is lower or same
-    if (canonical.logicalTime >= remote.logicalTime) return canonical;
 
     return Hlc<T>.fromLogicalTime(remote.logicalTime, canonical.nodeId);
   }

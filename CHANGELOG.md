@@ -1,4 +1,4 @@
-## 3.0.0-pre.6
+## 3.0.0
 - Use milliseconds instead of microseconds for HLCs
 - Allow using non-string node ids
 - Allow watching for changes

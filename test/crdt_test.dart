@@ -1,9 +1,8 @@
 import 'package:crdt/crdt.dart';
 import 'package:test/test.dart';
 
-void main() {
-  crdtTests('abc', syncSetup: () => MapCrdt<String, int>('abc'));
-}
+// Make dart test happy
+void main() {}
 
 void crdtTests<T extends Crdt<String, int>>(String nodeId,
     {T Function() syncSetup,
@@ -11,7 +10,7 @@ void crdtTests<T extends Crdt<String, int>>(String nodeId,
     void Function(T crdt) syncTearDown,
     Future<void> Function(T crdt) asyncTearDown}) {
   group('Basic', () {
-    Crdt<String, int> crdt;
+    T crdt;
 
     setUp(() async {
       crdt = syncSetup != null ? syncSetup() : await asyncSetup();
@@ -94,7 +93,7 @@ void crdtTests<T extends Crdt<String, int>>(String nodeId,
   });
 
   group('Watch', () {
-    Crdt crdt;
+    T crdt;
 
     setUp(() async {
       crdt = syncSetup != null ? syncSetup() : await asyncSetup();

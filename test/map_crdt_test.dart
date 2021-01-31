@@ -3,11 +3,15 @@ import 'dart:io';
 import 'package:crdt/crdt.dart';
 import 'package:test/test.dart';
 
+import 'crdt_test.dart';
+
 const _millis = 1000000000000;
 const _isoTime = '2001-09-09T01:46:40.000Z';
 
 void main() {
   final hlcNow = Hlc.now('abc');
+
+  crdtTests<MapCrdt<String, int>>('abc', syncSetup: () => MapCrdt('abc'));
 
   group('Seed', () {
     Crdt crdt;

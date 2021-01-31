@@ -2,7 +2,7 @@ import 'package:crdt/crdt.dart';
 import 'package:test/test.dart';
 
 void main() {
-  crdtTests('abc', syncSetup: () => CrdtMap<String, int>('abc'));
+  crdtTests('abc', syncSetup: () => MapCrdt<String, int>('abc'));
 }
 
 void crdtTests<T extends Crdt<String, int>>(String nodeId,

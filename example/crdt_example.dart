@@ -1,7 +1,7 @@
 import 'package:crdt/crdt.dart';
 
 void main() {
-  var crdt = CrdtMap('node_id');
+  var crdt = MapCrdt('node_id');
 
   // Insert a record
   crdt.put('a', 1);

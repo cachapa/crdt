@@ -6,14 +6,14 @@ import 'record.dart';
 
 /// A CRDT backed by a in-memory map.
 /// Useful for testing, or for applications which only require temporary datasets.
-class CrdtMap<K, V> extends Crdt<K, V> {
+class MapCrdt<K, V> extends Crdt<K, V> {
   final _map = <K, Record<V>>{};
   final _controller = StreamController<MapEntry<K, V>>.broadcast();
 
   @override
   final dynamic nodeId;
 
-  CrdtMap(this.nodeId, [Map<K, Record<V>> seed = const {}]) {
+  MapCrdt(this.nodeId, [Map<K, Record<V>> seed = const {}]) {
     _map.addAll(seed);
   }
 

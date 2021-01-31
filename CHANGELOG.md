@@ -1,25 +1,11 @@
-## 3.0.0-pre.5
-- Make basic tests easier to subclass
-
-## 3.0.0-pre.4
-- Add watch
-
-## 3.0.0-pre.3
-- Improve node id type handling
-
-## 3.0.0-pre.2
-- Allow using non-string node ids
-- HLC constructor automatically detects microseconds and converts to milliseconds
-- Fix missing counter overflow checks
-
-## 3.0.0-pre.1
+## 3.0.0-pre.6
 - Use milliseconds instead of microseconds for HLCs
-
-## 3.0.0-pre.0
+- Allow using non-string node ids
+- Allow watching for changes
 - Add `modified` field to `Record`
-- Add optional parameter `modifiedSince` to 'recordMap'
-- Rename MapCrdt to CrdtMap
-- Move HiveCrdt project to its own repo: https://github.com/cachapa/crdt_hive
+- Add optional parameter `modifiedSince` to 'recordMap' to generate delta sets
+- Make basic tests available to subclasses
+- Move HiveCrdt project to its own repo: https://github.com/cachapa/hive_crdt
 
 ## 2.2.2
 - Hlc: Add convenience `fromDate` constructor

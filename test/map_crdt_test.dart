@@ -13,7 +13,7 @@ void main() {
     Crdt crdt;
 
     setUp(() {
-      crdt = CrdtMap('abc', {'x': Record(hlcNow, 1, hlcNow)});
+      crdt = MapCrdt('abc', {'x': Record(hlcNow, 1, hlcNow)});
     });
 
     test('Seed item', () {
@@ -30,7 +30,7 @@ void main() {
     Crdt<String, int> crdt;
 
     setUp(() {
-      crdt = CrdtMap('abc');
+      crdt = MapCrdt('abc');
     });
 
     test('Merge older', () {
@@ -100,7 +100,7 @@ void main() {
 
   group('Serialization', () {
     test('To map', () {
-      final crdt = CrdtMap('abc', {
+      final crdt = MapCrdt('abc', {
         'x': Record<int>(Hlc(_millis, 0, 'abc'), 1, hlcNow),
       });
       expect(crdt.recordMap(),
@@ -108,21 +108,21 @@ void main() {
     });
 
     test('jsonEncodeStringKey', () {
-      final crdt = CrdtMap<String, int>('abc', {
+      final crdt = MapCrdt<String, int>('abc', {
         'x': Record(Hlc(_millis, 0, 'abc'), 1, hlcNow),
       });
       expect(crdt.toJson(), '{"x":{"hlc":"$_isoTime-0000-abc","value":1}}');
     });
 
     test('jsonEncodeIntKey', () {
-      final crdt = CrdtMap<int, int>('abc', {
+      final crdt = MapCrdt<int, int>('abc', {
         1: Record(Hlc(_millis, 0, 'abc'), 1, hlcNow),
       });
       expect(crdt.toJson(), '{"1":{"hlc":"$_isoTime-0000-abc","value":1}}');
     });
 
     test('jsonEncodeDateTimeKey', () {
-      final crdt = CrdtMap<DateTime, int>('abc', {
+      final crdt = MapCrdt<DateTime, int>('abc', {
         DateTime(2000, 01, 01, 01, 20):
             Record(Hlc(_millis, 0, 'abc'), 1, hlcNow),
       });
@@ -131,7 +131,7 @@ void main() {
     });
 
     test('jsonEncodeCustomClassValue', () {
-      final crdt = CrdtMap<String, TestClass>('abc', {
+      final crdt = MapCrdt<String, TestClass>('abc', {
         'x': Record(Hlc(_millis, 0, 'abc'), TestClass('test'), hlcNow),
       });
       expect(crdt.toJson(),
@@ -139,14 +139,14 @@ void main() {
     });
 
     test('jsonEncodeCustomNodeId', () {
-      final crdt = CrdtMap<String, int>('abc', {
+      final crdt = MapCrdt<String, int>('abc', {
         'x': Record(Hlc<int>(_millis, 0, 1), 0, hlcNow),
       });
       expect(crdt.toJson(), '{"x":{"hlc":"$_isoTime-0000-1","value":0}}');
     });
 
     test('jsonDecodeStringKey', () {
-      final crdt = CrdtMap<String, int>('abc');
+      final crdt = MapCrdt<String, int>('abc');
       final map = CrdtJson.decode<String, int>(
           '{"x":{"hlc":"$_isoTime-0000-abc","value":1}}', hlcNow);
       crdt.putRecords(map);
@@ -155,7 +155,7 @@ void main() {
     });
 
     test('jsonDecodeIntKey', () {
-      final crdt = CrdtMap<int, int>('abc');
+      final crdt = MapCrdt<int, int>('abc');
       final map = CrdtJson.decode<int, int>(
           '{"1":{"hlc":"$_isoTime-0000-abc","value":1}}', hlcNow,
           keyDecoder: (key) => int.parse(key));
@@ -164,7 +164,7 @@ void main() {
     });
 
     test('jsonDecodeDateTimeKey', () {
-      final crdt = CrdtMap<DateTime, int>('abc');
+      final crdt = MapCrdt<DateTime, int>('abc');
       final map = CrdtJson.decode<DateTime, int>(
           '{"2000-01-01 01:20:00.000":{"hlc":"$_isoTime-0000-abc","value":1}}',
           hlcNow,
@@ -177,7 +177,7 @@ void main() {
     });
 
     test('jsonDecodeCustomClassValue', () {
-      final crdt = CrdtMap<String, TestClass>('abc');
+      final crdt = MapCrdt<String, TestClass>('abc');
       final map = CrdtJson.decode<String, TestClass>(
           '{"x":{"hlc":"$_isoTime-0000-abc","value":{"test":"test"}}}', hlcNow,
           valueDecoder: (key, value) => TestClass.fromJson(value));
@@ -187,7 +187,7 @@ void main() {
     });
 
     test('jsonDecodeCustomNodeId', () {
-      final crdt = CrdtMap<String, int>('abc');
+      final crdt = MapCrdt<String, int>('abc');
       final map = CrdtJson.decode<String, int>(
           '{"x":{"hlc":"$_isoTime-0000-1","value":0}}', hlcNow,
           nodeIdDecoder: int.parse);
@@ -203,7 +203,7 @@ void main() {
     final hlc3 = Hlc(_millis + 2, 0, 'abc');
 
     setUp(() {
-      crdt = CrdtMap('abc', {
+      crdt = MapCrdt('abc', {
         'x': Record(hlc1, 1, hlc1),
         'y': Record(hlc2, 2, hlc2),
       });
@@ -236,9 +236,9 @@ void main() {
     Crdt crdtC;
 
     setUp(() {
-      crdtA = CrdtMap('a');
-      crdtB = CrdtMap('b');
-      crdtC = CrdtMap('c');
+      crdtA = MapCrdt('a');
+      crdtB = MapCrdt('b');
+      crdtC = MapCrdt('c');
 
       crdtA.put('x', 1);
       sleep(Duration(milliseconds: 100));

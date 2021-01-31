@@ -12,7 +12,7 @@ The `Crdt` class works as a layer on top of a map. The simplest way to experimen
 import 'package:crdt/crdt.dart';
 
 void main() {
-  var crdt = CrdtMap('node_id');
+  var crdt = MapCrdt('node_id');
 
   // Insert a record
   crdt.put('a', 1);
@@ -34,10 +34,9 @@ String sendToRemote(String json) {
   final hlc = Hlc.now('another_nodeId');
   return '{"a":{"hlc":"$hlc","value":2}}';
 }
-
 ```
 
-You'll probably want to implement some sort of persistent storage by subclassing the `Crdt` class. An example using [Hive](https://pub.dev/packages/hive) is provided in [crdt_hive](https://github.com/cachapa/crdt_hive).
+You'll probably want to implement some sort of persistent storage by subclassing the `Crdt` class. An example using [Hive](https://pub.dev/packages/hive) is provided in [hive_crdt](https://github.com/cachapa/hive_crdt).
 
 ## Example
 

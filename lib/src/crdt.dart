@@ -69,19 +69,21 @@ abstract class Crdt<K, V> {
   /// See also [mergeJson()].
   void merge(Map<K, Record<V>> remoteRecords) {
     final localRecords = recordMap();
-    final updatedRecords = <K, Record<V>>{};
 
-    remoteRecords.forEach((key, remoteRecord) {
-      _canonicalTime = Hlc.recv(_canonicalTime, remoteRecord.hlc);
+    final updatedRecords = (remoteRecords
+          ..removeWhere((key, value) {
+            _canonicalTime = Hlc.recv(_canonicalTime, value.hlc);
+            return localRecords[key] != null &&
+                localRecords[key]!.hlc >= value.hlc;
+          }))
+        .map((key, value) =>
+            MapEntry(key, Record<V>(value.hlc, value.value, _canonicalTime)));
 
-      // Keep record if there's no local copy, or if remote is newer
-      final localRecord = localRecords[key];
-      if (localRecord == null || localRecord.hlc < remoteRecord.hlc) {
-        updatedRecords[key] = remoteRecord;
-      }
-    });
-
+    // Store updated records
     putRecords(updatedRecords);
+
+    // Increment canonical time
+    _canonicalTime = Hlc.send(_canonicalTime);
   }
 
   /// Merges two CRDTs and updates record and canonical clocks accordingly.

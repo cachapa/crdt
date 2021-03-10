@@ -1,3 +1,6 @@
+## 4.0.1
+- Fix edge case when merging remote records
+
 ## 4.0.0
 - Migrate to Dart null safety
 

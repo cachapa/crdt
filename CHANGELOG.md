@@ -1,3 +1,6 @@
+## 4.0.2
+- Add purge() method to reset the data store
+
 ## 4.0.1
 - Fix edge case when merging remote records
 

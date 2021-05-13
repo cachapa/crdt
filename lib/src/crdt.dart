@@ -62,8 +62,15 @@ abstract class Crdt<K, V> {
   bool? isDeleted(K key) => getRecord(key)?.isDeleted;
 
   /// Marks all records as deleted.
-  /// Note: this doesn't actually delete the records since the deletion needs to be propagated when merging with other CRDTs.
-  void clear() => putAll(map.map((key, _) => MapEntry(key, null)));
+  /// Note: by default this doesn't actually delete the records since the deletion needs to be propagated when merging with other CRDTs.
+  /// Set [purge] to true to clear the records. Useful for testing or to reset a store.
+  void clear({bool purge = false}) {
+    if (purge) {
+      this.purge();
+    } else {
+      putAll(map.map((key, _) => MapEntry(key, null)));
+    }
+  }
 
   /// Merges two CRDTs and updates record and canonical clocks accordingly.
   /// See also [mergeJson()].
@@ -155,4 +162,9 @@ abstract class Crdt<K, V> {
   /// Watch for changes to this CRDT.
   /// Use [key] to monitor a specific key.
   Stream<MapEntry<K, V?>> watch({K key});
+
+  /// Clear all records. Records will be removed rather than being marked as deleted.
+  /// Useful for testing or to reset a store.
+  /// See also [clear].
+  void purge();
 }

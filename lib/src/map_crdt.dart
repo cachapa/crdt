@@ -47,4 +47,7 @@ class MapCrdt<K, V> extends Crdt<K, V> {
   @override
   Stream<MapEntry<K, V?>> watch({K? key}) =>
       _controller.stream.where((event) => key == null || key == event.key);
+
+  @override
+  void purge() => _map.clear();
 }

@@ -53,6 +53,22 @@ abstract class Crdt<K, V> {
     putRecords(records);
   }
 
+  /// Set synced true in the CRDT without updating the HLC.
+  void sync(K key, V? value) {
+    final record = Record<V>(_canonicalTime, value, _canonicalTime, true);
+    putRecord(key, record);
+  }
+
+  /// Set synced true in the CRDT without updating the HLC.
+  void syncAll(Map<K, V?> values) {
+    // Avoid touching the canonical time if no data is inserted
+    if (values.isEmpty) return;
+
+    final records = values.map<K, Record<V>>((key, value) =>
+        MapEntry(key, Record(_canonicalTime, value, _canonicalTime, true)));
+    putRecords(records);
+  }
+
   /// Marks the record as deleted.
   /// Note: this doesn't actually delete the record since the deletion needs to be propagated when merging with other CRDTs.
   void delete(K key) => put(key, null);
@@ -78,13 +94,13 @@ abstract class Crdt<K, V> {
     final localRecords = recordMap();
 
     final updatedRecords = (remoteRecords
-          ..removeWhere((key, value) {
-            _canonicalTime = Hlc.recv(_canonicalTime, value.hlc);
-            return localRecords[key] != null &&
-                localRecords[key]!.hlc >= value.hlc;
-          }))
+      ..removeWhere((key, value) {
+        _canonicalTime = Hlc.recv(_canonicalTime, value.hlc);
+        return localRecords[key] != null &&
+            localRecords[key]!.hlc >= value.hlc;
+      }))
         .map((key, value) =>
-            MapEntry(key, Record<V>(value.hlc, value.value, _canonicalTime)));
+        MapEntry(key, Record<V>(value.hlc, value.value, _canonicalTime)));
 
     // Store updated records
     putRecords(updatedRecords);
@@ -125,9 +141,9 @@ abstract class Crdt<K, V> {
   /// Use [keyEncoder] to convert non-string keys.
   /// Use [valueEncoder] to convert non-native value types.
   String toJson(
-          {Hlc? modifiedSince,
-          KeyEncoder<K>? keyEncoder,
-          ValueEncoder<K, V>? valueEncoder}) =>
+      {Hlc? modifiedSince,
+        KeyEncoder<K>? keyEncoder,
+        ValueEncoder<K, V>? valueEncoder}) =>
       CrdtJson.encode(
         recordMap(modifiedSince: modifiedSince),
         keyEncoder: keyEncoder,

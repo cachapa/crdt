@@ -113,11 +113,11 @@ abstract class Crdt<K, V> {
   /// Should be overridden if the implementation can do it more efficiently.
   void refreshCanonicalTime() {
     final map = recordMap();
-    _canonicalTime = Hlc.fromLogicalTime(
-        map.isEmpty
-            ? 0
-            : map.values.map((record) => record.hlc.logicalTime).reduce(max),
-        nodeId);
+    _canonicalTime = map.isEmpty
+        ? Hlc.zero(nodeId)
+        : Hlc.fromLogicalTime(
+            map.values.map((record) => record.hlc.logicalTime).reduce(max),
+            nodeId);
   }
 
   /// Outputs the contents of this CRDT in Json format.

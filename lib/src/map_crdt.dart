@@ -41,8 +41,7 @@ class MapCrdt<K, V> extends Crdt<K, V> {
   @override
   Map<K, Record<V>> recordMap({Hlc? modifiedSince}) =>
       Map<K, Record<V>>.from(_map)
-        ..removeWhere((_, record) =>
-            record.modified.logicalTime < (modifiedSince?.logicalTime ?? 0));
+        ..removeWhere((_, record) => record.modified < modifiedSince);
 
   @override
   Stream<MapEntry<K, V?>> watch({K? key}) =>

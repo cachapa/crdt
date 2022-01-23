@@ -1,4 +1,4 @@
-import 'hlc.dart';
+import 'hlc.dart' if (dart.library.js) 'hlcjs.dart';
 
 typedef KeyEncoder<K> = String Function(K key);
 typedef ValueEncoder<K, V> = dynamic Function(K key, V? value);

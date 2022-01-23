@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'crdt_json.dart';
-import 'hlc.dart';
+import 'hlc.dart' if (dart.library.js) 'hlcjs.dart';
 import 'record.dart';
 
 abstract class Crdt<K, V> {

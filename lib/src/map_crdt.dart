@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'crdt.dart';
-import 'hlc.dart';
+import 'hlc.dart' if (dart.library.js) 'hlcjs.dart';
 import 'record.dart';
 
 /// A CRDT backed by a in-memory map.

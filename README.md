@@ -49,10 +49,10 @@ Please file feature requests and bugs at the [issue tracker](https://github.com/
 ## Testing
 
 ```
-dart test test/crdt_test.dart test/hlc_test.dart test/map_crdt_test.dart
+dart test
 ```
 
 JavaScript version:
 ```
-dart test test/crdt_test.dart test/hlcjs_test.dart test/map_crdt_js_test.dart --platform node
+dart test --platform node
 ```

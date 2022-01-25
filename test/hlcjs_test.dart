@@ -1,3 +1,5 @@
+@TestOn('js')
+
 import 'package:crdt/src/hlcjs.dart';
 import 'package:test/test.dart';
 

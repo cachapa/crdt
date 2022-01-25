@@ -1,3 +1,5 @@
+@TestOn('!js')
+
 import 'dart:io';
 
 import 'package:crdt/crdt.dart';

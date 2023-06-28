@@ -40,7 +40,7 @@ You'll probably want to implement some sort of persistent storage by subclassing
 
 ## Example
 
-A simple example is provided with this project, otherwise for a real-world application check the `tudo` to-do app: [client](https://github.com/cachapa/tudo_client) & [server](https://github.com/cachapa/tudo_server).
+A [simple example](https://github.com/cachapa/crdt/blob/master/example/crdt_example.dart) is provided with this project.
 
 ## Features and bugs
 

@@ -291,5 +291,8 @@ class TestClass {
   bool operator ==(other) => other is TestClass && test == other.test;
 
   @override
+  int get hashCode => test.hashCode;
+
+  @override
   String toString() => test;
 }

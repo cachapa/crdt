@@ -107,7 +107,7 @@ class Hlc<T> implements Comparable<Hlc> {
       '-$nodeId';
 
   @override
-  int get hashCode => toString().hashCode;
+  int get hashCode => Object.hash(millis, counter, nodeId).hashCode;
 
   @override
   bool operator ==(other) => other is Hlc<T> && compareTo(other) == 0;

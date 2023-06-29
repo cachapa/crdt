@@ -1,3 +1,6 @@
+## 4.0.3
+- Update to Dart 3
+
 ## 4.0.2
 - Add purge() method to reset the data store
 

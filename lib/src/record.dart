@@ -35,5 +35,8 @@ class Record<V> {
       other is Record<V> && hlc == other.hlc && value == other.value;
 
   @override
+  int get hashCode => Object.hash(hlc, value, modified);
+
+  @override
   String toString() => toJson('').toString();
 }

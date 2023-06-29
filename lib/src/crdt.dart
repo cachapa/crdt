@@ -20,13 +20,13 @@ abstract class Crdt<K, V> {
 
   /// Returns a simple key-value map without HLCs or deleted records.
   /// See [recordMap].
-  Map<K, V> get map =>
+  Map<K, V?> get map =>
       (recordMap()..removeWhere((_, record) => record.isDeleted))
-          .map((key, record) => MapEntry(key, record.value!));
+          .map((key, record) => MapEntry(key, record.value));
 
   List<K> get keys => map.keys.toList();
 
-  List<V> get values => map.values.toList();
+  List<V?> get values => map.values.toList();
 
   Crdt() {
     refreshCanonicalTime();

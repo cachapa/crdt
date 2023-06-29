@@ -4,6 +4,8 @@ This project is heavily influenced by James Long's talk [CRTDs for Mortals](http
 
 It has [zero external dependencies](https://github.com/cachapa/crdt/blob/master/pubspec.yaml), so it should run everywhere where Dart runs.
 
+See [sql_crdt](https://github.com/cachapa/sql_crdt) for an implementation of CRDTs backed by an SQL database.
+
 ## Usage
 
 The `Crdt` class works as a layer on top of a map. The simplest way to experiment is to initialise it an empty map:

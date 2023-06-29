@@ -8,7 +8,7 @@ See [sql_crdt](https://github.com/cachapa/sql_crdt) for an implementation of CRD
 
 ## Usage
 
-The `Crdt` class works as a layer on top of a map. The simplest way to experiment is to initialise it an empty map:
+The `Crdt` class works as a layer on top of a map. The simplest way to experiment is to initialise it with an empty map:
 
 ```dart
 import 'package:crdt/crdt.dart';

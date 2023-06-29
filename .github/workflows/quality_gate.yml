@@ -1,19 +1,32 @@
-name: Quality Gate
+name: Quality gate
 
-on: push
+on:
+  push:
+    branches:
+      - '**'
 
 jobs:
-  build:
+  format:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@v1
-      - name: Verify code formatting
-        run: dart format --set-exit-if-changed .
-      - name: Get dependencies
-        run: pub get
-      - name: Static code analysis
-        run: dart analyze --fatal-infos
-      - name: Run tests
-        run: pub run test
+      - run: dart format --set-exit-if-changed .
+
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dart-lang/setup-dart@v1
+      - run: dart pub get
+      - run: dart analyze --fatal-infos
+
+  test:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dart-lang/setup-dart@v1
+      - run: dart pub get
+      - run: dart run test
+

@@ -19,8 +19,8 @@ class Record<V> {
   Record(this.hlc, this.value, this.modified);
 
   Record.fromJson(dynamic key, Map<String, dynamic> map, this.modified,
-      {ValueDecoder<V>? valueDecoder, NodeIdDecoder? nodeIdDecoder})
-      : hlc = Hlc.parse(map['hlc'], nodeIdDecoder),
+      {ValueDecoder<V>? valueDecoder})
+      : hlc = Hlc.parse(map['hlc']),
         value = valueDecoder == null || map['value'] == null
             ? map['value']
             : valueDecoder(key, map['value']);

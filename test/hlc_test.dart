@@ -33,7 +33,7 @@ void main() {
     });
 
     test('parse', () {
-      expect(Hlc<String>.parse('$_isoTime-0042-abc'), hlc);
+      expect(Hlc.parse('$_isoTime-0042-abc'), hlc);
     });
   });
 
@@ -44,20 +44,7 @@ void main() {
     });
 
     test('Parse hlc', () {
-      expect(
-          Hlc<String>.parse('$_isoTime-0042-abc'), Hlc(_millis, 0x42, 'abc'));
-    });
-  });
-
-  group('Non-String node id', () {
-    test('to hlc', () {
-      final hlc = Hlc<int>.parse('$_isoTime-0042-1', int.parse);
-      expect(hlc, Hlc(_millis, 0x42, 1));
-    });
-
-    test('to string', () {
-      final hlc = Hlc(_millis, 0x42, 1);
-      expect(hlc.toString(), '$_isoTime-0042-1');
+      expect(Hlc.parse('$_isoTime-0042-abc'), Hlc(_millis, 0x42, 'abc'));
     });
   });
 
@@ -164,7 +151,7 @@ void main() {
   group('Send', () {
     test('Higher canonical time', () {
       final hlc = Hlc(_millis + 1, 0x42, 'abc');
-      final sendHlc = Hlc.send(hlc, millis: _millis);
+      final sendHlc = hlc.increment(wallMillis: _millis);
       expect(sendHlc, isNot(hlc));
       expect(sendHlc.millis, hlc.millis);
       expect(sendHlc.counter, 0x43);
@@ -173,7 +160,7 @@ void main() {
 
     test('Equal canonical time', () {
       final hlc = Hlc(_millis, 0x42, 'abc');
-      final sendHlc = Hlc.send(hlc, millis: _millis);
+      final sendHlc = hlc.increment(wallMillis: _millis);
       expect(sendHlc, isNot(hlc));
       expect(sendHlc.millis, _millis);
       expect(sendHlc.counter, 0x43);
@@ -182,7 +169,7 @@ void main() {
 
     test('Lower canonical time', () {
       final hlc = Hlc(_millis - 1, 0x42, 'abc');
-      final sendHlc = Hlc.send(hlc, millis: _millis);
+      final sendHlc = hlc.increment(wallMillis: _millis);
       expect(sendHlc, isNot(hlc));
       expect(sendHlc.millis, _millis);
       expect(sendHlc.counter, 0);
@@ -191,13 +178,13 @@ void main() {
 
     test('Fail on clock drift', () {
       final hlc = Hlc(_millis + 60001, 0, 'abc');
-      expect(() => Hlc.send(hlc, millis: _millis),
+      expect(() => hlc.increment(wallMillis: _millis),
           throwsA(isA<ClockDriftException>()));
     });
 
     test('Fail on counter overflow', () {
       final hlc = Hlc(_millis, 0xFFFF, 'abc');
-      expect(() => Hlc.send(hlc, millis: _millis),
+      expect(() => hlc.increment(wallMillis: _millis),
           throwsA(isA<OverflowException>()));
     });
   });
@@ -207,47 +194,47 @@ void main() {
 
     test('Higher canonical time', () {
       final remote = Hlc(_millis - 1, 0x42, 'abcd');
-      final hlc = Hlc.recv(canonical, remote, millis: _millis);
+      final hlc = canonical.merge(remote, wallMillis: _millis);
       expect(hlc, equals(canonical));
     });
 
     test('Same remote time', () {
       final remote = Hlc(_millis, 0x42, 'abcd');
-      final hlc = Hlc.recv(canonical, remote, millis: _millis);
+      final hlc = canonical.merge(remote, wallMillis: _millis);
       expect(hlc, Hlc(remote.millis, remote.counter, canonical.nodeId));
     });
 
     test('Higher remote time', () {
       final remote = Hlc(_millis + 1, 0, 'abcd');
-      final hlc = Hlc.recv(canonical, remote, millis: _millis);
+      final hlc = canonical.merge(remote, wallMillis: _millis);
       expect(hlc, Hlc(remote.millis, remote.counter, canonical.nodeId));
     });
 
     test('Higher wall clock time', () {
       final remote = Hlc.parse('$_isoTime-0000-abcd');
-      final hlc = Hlc.recv(canonical, remote, millis: _millis + 1);
+      final hlc = canonical.merge(remote, wallMillis: _millis + 1);
       expect(hlc, canonical);
     });
 
     test('Skip node id check if time is lower', () {
       final remote = Hlc(_millis - 1, 0x42, 'abc');
-      expect(Hlc.recv(canonical, remote, millis: _millis), canonical);
+      expect(canonical.merge(remote, wallMillis: _millis), canonical);
     });
 
     test('Skip node id check if time is same', () {
       final remote = Hlc(_millis, 0x42, 'abc');
-      expect(Hlc.recv(canonical, remote, millis: _millis), canonical);
+      expect(canonical.merge(remote, wallMillis: _millis), canonical);
     });
 
     test('Fail on node id', () {
       final remote = Hlc(_millis + 1, 0, 'abc');
-      expect(() => Hlc.recv(canonical, remote, millis: _millis),
+      expect(() => canonical.merge(remote, wallMillis: _millis),
           throwsA(isA<DuplicateNodeException>()));
     });
 
     test('Fail on clock drift', () {
       final remote = Hlc(_millis + 60001, 0x42, 'abcd');
-      expect(() => Hlc.recv(canonical, remote, millis: _millis),
+      expect(() => canonical.merge(remote, wallMillis: _millis),
           throwsA(isA<ClockDriftException>()));
     });
   });

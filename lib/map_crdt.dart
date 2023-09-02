@@ -11,7 +11,7 @@ class MapCrdt<K, V> extends Crdt<K, V> {
   final _controller = StreamController<MapEntry<K, V?>>.broadcast();
 
   @override
-  final dynamic nodeId;
+  final String nodeId;
 
   MapCrdt(this.nodeId, [Map<K, Record<V>> seed = const {}]) {
     _map.addAll(seed);

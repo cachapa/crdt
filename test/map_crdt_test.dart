@@ -142,13 +142,6 @@ void main() {
           '{"x":{"hlc":"$_isoTime-0000-abc","value":{"test":"test"}}}');
     });
 
-    test('jsonEncodeCustomNodeId', () {
-      final crdt = MapCrdt<String, int>('abc', {
-        'x': Record(Hlc<int>(_millis, 0, 1), 0, hlcNow),
-      });
-      expect(crdt.toJson(), '{"x":{"hlc":"$_isoTime-0000-1","value":0}}');
-    });
-
     test('jsonDecodeStringKey', () {
       final crdt = MapCrdt<String, int>('abc');
       final map = CrdtJson.decode<String, int>(
@@ -188,15 +181,6 @@ void main() {
       crdt.putRecords(map);
       expect(crdt.recordMap(),
           {'x': Record(Hlc(_millis, 0, 'abc'), TestClass('test'), hlcNow)});
-    });
-
-    test('jsonDecodeCustomNodeId', () {
-      final crdt = MapCrdt<String, int>('abc');
-      final map = CrdtJson.decode<String, int>(
-          '{"x":{"hlc":"$_isoTime-0000-1","value":0}}', hlcNow,
-          nodeIdDecoder: int.parse);
-      crdt.putRecords(map);
-      expect(crdt.recordMap(), {'x': Record(Hlc(_millis, 0, 1), 0, hlcNow)});
     });
   });
 

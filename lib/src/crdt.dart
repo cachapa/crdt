@@ -10,7 +10,7 @@ abstract class Crdt<K, V> {
 
   Hlc get canonicalTime => _canonicalTime;
 
-  dynamic get nodeId;
+  String get nodeId;
 
   /// Returns [true] if CRDT has any non-deleted records.
   bool get isEmpty => map.isEmpty;
@@ -37,7 +37,7 @@ abstract class Crdt<K, V> {
 
   /// Inserts or updates a value in the CRDT and increments the canonical time.
   void put(K key, V? value) {
-    _canonicalTime = Hlc.send(_canonicalTime);
+    _canonicalTime = _canonicalTime.increment();
     final record = Record<V>(_canonicalTime, value, _canonicalTime);
     putRecord(key, record);
   }
@@ -47,7 +47,7 @@ abstract class Crdt<K, V> {
     // Avoid touching the canonical time if no data is inserted
     if (values.isEmpty) return;
 
-    _canonicalTime = Hlc.send(_canonicalTime);
+    _canonicalTime = _canonicalTime.increment();
     final records = values.map<K, Record<V>>((key, value) =>
         MapEntry(key, Record(_canonicalTime, value, _canonicalTime)));
     putRecords(records);
@@ -79,7 +79,7 @@ abstract class Crdt<K, V> {
 
     final updatedRecords = (remoteRecords
           ..removeWhere((key, value) {
-            _canonicalTime = Hlc.recv(_canonicalTime, value.hlc);
+            _canonicalTime = _canonicalTime.merge(value.hlc);
             return localRecords[key] != null &&
                 localRecords[key]!.hlc >= value.hlc;
           }))
@@ -90,7 +90,7 @@ abstract class Crdt<K, V> {
     putRecords(updatedRecords);
 
     // Increment canonical time
-    _canonicalTime = Hlc.send(_canonicalTime);
+    _canonicalTime = _canonicalTime.increment();
   }
 
   /// Merges two CRDTs and updates record and canonical clocks accordingly.

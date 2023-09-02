@@ -30,7 +30,6 @@ class CrdtJson {
           value,
           modified,
           valueDecoder: valueDecoder,
-          nodeIdDecoder: nodeIdDecoder,
         ),
       ),
     );

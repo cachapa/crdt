@@ -1,25 +1,22 @@
-import 'package:crdt/crdt.dart';
+import 'package:crdt/src/map_crdt/map_crdt.dart';
 
 void main() {
-  var crdt = MapCrdt('node_id');
+  var crdt1 = MapCrdt(['table']);
+  var crdt2 = MapCrdt(['table']);
 
-  // Insert a record
-  crdt.put('a', 1);
-  // Read the record
-  print('Record: ${crdt.get('a')}');
+  print('Inserting 2 records in crdt1…');
+  crdt1.put('table', 'a', 1);
+  crdt1.put('table', 'b', 1);
 
-  // Export the CRDT as Json
-  final json = crdt.toJson();
-  // Send to remote node
-  final remoteJson = sendToRemote(json);
-  // Merge remote CRDT with local
-  crdt.mergeJson(remoteJson);
-  // Verify updated record
-  print('Record after merging: ${crdt.get('a')}');
-}
+  print('crdt1: ${crdt1.getMap('table')}');
 
-// Mock sending the CRDT to a remote node and getting an updated one back
-String sendToRemote(String json) {
-  final hlc = Hlc.now('another_nodeId');
-  return '{"a":{"hlc":"$hlc","value":2}}';
+  print('\nInserting a conflicting record in crdt2…');
+  crdt2.put('table', 'a', 2);
+
+  print('crdt2: ${crdt2.getMap('table')}');
+
+  print('\nMerging crdt2 into crdt1…');
+  crdt1.merge(crdt2.getChangeset());
+
+  print('crdt1: ${crdt1.getMap('table')}');
 }

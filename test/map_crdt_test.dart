@@ -1,282 +1,371 @@
-import 'dart:io';
+import 'dart:async';
 
 import 'package:crdt/crdt.dart';
+import 'package:crdt/map_crdt.dart';
 import 'package:test/test.dart';
 
-import 'crdt_test.dart';
+Future<void> get _delay => Future.delayed(Duration(milliseconds: 1));
 
-const _millis = 1000000000000;
-const _isoTime = '2001-09-09T01:46:40.000Z';
+typedef TestCrdt = MapCrdt;
+
+Future<TestCrdt> createCrdt(String collection, String table1,
+        [String? table2]) async =>
+    MapCrdt([table1, table2].nonNulls);
+
+Future<void> deleteCrdt(TestCrdt crdt) async {}
 
 void main() {
-  final hlcNow = Hlc.now('abc');
+  late TestCrdt crdt;
 
-  crdtTests<MapCrdt<String, int>>('abc', syncSetup: () => MapCrdt('abc'));
-
-  group('Seed', () {
-    late Crdt crdt;
-
-    setUp(() {
-      crdt = MapCrdt('abc', {'x': Record(hlcNow, 1, hlcNow)});
+  group('Empty', () {
+    setUp(() async {
+      crdt = await createCrdt('crdt', 'table');
     });
 
-    test('Seed item', () {
-      expect(crdt.get('x'), 1);
+    tearDown(() async {
+      await deleteCrdt(crdt);
     });
 
-    test('Seed and put', () {
-      crdt.put('x', 2);
-      expect(crdt.get('x'), 2);
+    test('Node ID', () {
+      print(crdt.isEmpty);
+      // expect(Uuid.isValidUUID(fromString: crdt.nodeId), true);
+    });
+
+    test('Empty', () {
+      expect(crdt.canonicalTime, Hlc.zero(crdt.nodeId));
+      expect(crdt.isEmpty, true);
+    });
+  });
+
+  group('Insert', () {
+    setUp(() async {
+      crdt = await createCrdt('crdt', 'table');
+    });
+
+    tearDown(() async {
+      await deleteCrdt(crdt);
+    });
+
+    test('Single', () async {
+      await crdt.put('table', 'x', 1);
+      expect(crdt.isEmpty, false);
+      expect(crdt.getChangeset().recordCount, 1);
+      expect(crdt.get('table', 'x'), 1);
+    });
+
+    test('Null', () async {
+      await crdt.put('table', 'x', null);
+      expect(crdt.getChangeset().recordCount, 1);
+      expect(crdt.get('table', 'x'), null);
+    });
+
+    test('Update', () async {
+      await crdt.put('table', 'x', 1);
+      await crdt.put('table', 'x', 2);
+      expect(crdt.getChangeset().recordCount, 1);
+      expect(crdt.get('table', 'x'), 2);
+    });
+
+    test('Multiple', () async {
+      await crdt.putAll({
+        'table': {'x': 1, 'y': 2}
+      });
+      expect(crdt.getChangeset().recordCount, 2);
+      expect(crdt.getMap('table'), {'x': 1, 'y': 2});
+    });
+
+    test('Enforce table existence', () {
+      expect(() async => await crdt.put('not_test', 'x', 1),
+          throwsA('Unknown table(s): not_test'));
+    });
+  });
+
+  group('Delete', () {
+    setUp(() async {
+      crdt = await createCrdt('crdt', 'table');
+      await crdt.put('table', 'x', 1);
+    });
+
+    tearDown(() async {
+      await deleteCrdt(crdt);
+    });
+
+    test('Set deleted', () async {
+      await crdt.put('table', 'x', 1, true);
+      expect(crdt.isEmpty, false);
+      expect(crdt.getChangeset().recordCount, 1);
+      expect(crdt.getMap('table').length, 0);
+      expect(crdt.get('table', 'x'), null);
+    });
+
+    test('Undelete', () async {
+      await crdt.put('table', 'x', 1, true);
+      await crdt.put('table', 'x', 1, false);
+      expect(crdt.isEmpty, false);
+      expect(crdt.getChangeset().recordCount, 1);
+      expect(crdt.getMap('table').length, 1);
+      expect(crdt.get('table', 'x'), 1);
     });
   });
 
   group('Merge', () {
-    late Crdt<String, int> crdt;
+    late TestCrdt crdt1;
 
-    setUp(() {
-      crdt = MapCrdt('abc');
+    setUp(() async {
+      crdt = await createCrdt('crdt', 'table');
+      crdt1 = await createCrdt('crdt', 'table');
     });
 
-    test('Merge older', () {
-      crdt.put('x', 2);
-      crdt.merge({'x': Record(Hlc(_millis - 1, 0, 'xyz'), 1, hlcNow)});
-      expect(crdt.get('x'), 2);
+    tearDown(() async {
+      await deleteCrdt(crdt);
+      await deleteCrdt(crdt1);
     });
 
-    test('Merge very old', () {
-      crdt.put('x', 2);
-      crdt.merge({'x': Record(Hlc(0, 0, 'xyz'), 1, hlcNow)});
-      expect(crdt.get('x'), 2);
+    test('Into empty', () async {
+      await crdt1.put('table', 'x', 2);
+      await crdt.merge(crdt1.getChangeset());
+      expect(crdt.get('table', 'x'), 2);
     });
 
-    test('Merge newer', () async {
-      crdt.put('x', 1);
-      await Future.delayed(Duration(milliseconds: 1));
-      crdt.merge({'x': Record(Hlc.now('xyz'), 2, hlcNow)});
-      expect(crdt.get('x'), 2);
+    test('Empty changeset', () async {
+      await crdt1.put('table', 'x', 2);
+      await crdt.merge(crdt1.getChangeset());
+      expect(crdt.get('table', 'x'), 2);
     });
 
-    test('Disambiguate using node id', () {
-      crdt.merge({'x': Record(Hlc(_millis, 0, 'nodeA'), 1, hlcNow)});
-      crdt.merge({'x': Record(Hlc(_millis, 0, 'nodeB'), 2, hlcNow)});
-      expect(crdt.get('x'), 2);
+    test('Older', () async {
+      await crdt1.put('table', 'x', 2);
+      await _delay;
+      await crdt.put('table', 'x', 1);
+      await crdt.merge(crdt1.getChangeset());
+      expect(crdt.get('table', 'x'), 1);
     });
 
-    test('Merge same', () {
-      crdt.put('x', 2);
-      final remoteTs = crdt.getRecord('x')!.hlc;
-      crdt.merge({'x': Record(remoteTs, 1, hlcNow)});
-      expect(crdt.get('x'), 2);
+    test('Newer', () async {
+      await crdt.put('table', 'x', 1);
+      await _delay;
+      await crdt1.put('table', 'x', 2);
+      await crdt.merge(crdt1.getChangeset());
+      expect(crdt.get('table', 'x'), 2);
     });
 
-    test('Merge older, newer counter', () {
-      crdt.put('x', 2);
-      crdt.merge({'x': Record(Hlc(_millis - 1, 2, 'xyz'), 1, hlcNow)});
-      expect(crdt.get('x'), 2);
+    test('Lower node id', () async {
+      await crdt.put('table', 'x', 1);
+      final changeset = crdt.getChangeset();
+      changeset['table']!.first.addAll({
+        'hlc': (changeset['table']!.first['hlc'] as Hlc)
+            .apply(nodeId: '00000000-0000-0000-0000-000000000000'),
+        'value': 2,
+      });
+      await crdt.merge(changeset);
+      expect(crdt.get('table', 'x'), 1);
     });
 
-    test('Merge same, newer counter', () {
-      crdt.put('x', 1);
-      final remoteTs = Hlc(crdt.getRecord('x')!.hlc.millis, 2, 'xyz');
-      crdt.merge({'x': Record(remoteTs, 2, hlcNow)});
-      expect(crdt.get('x'), 2);
+    test('Higher node id', () async {
+      await crdt.put('table', 'x', 1);
+      final changeset = crdt.getChangeset();
+      changeset['table']!.first.addAll({
+        'hlc': (changeset['table']!.first['hlc'] as Hlc)
+            .apply(nodeId: 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
+        'value': 2,
+      });
+      await crdt.merge(changeset);
+      expect(crdt.get('table', 'x'), 2);
     });
 
-    test('Merge new item', () {
-      final map = {'x': Record<int>(Hlc.now('xyz'), 2, hlcNow)};
-      crdt.merge(map);
-      expect(crdt.recordMap(), map);
+    test('Enforce table existence', () async {
+      final other = await createCrdt('other', 'not_table');
+      await other.put('not_table', 'x', 1);
+      expect(() => crdt.merge(other.getChangeset()),
+          throwsA('Unknown table(s): not_table'));
+      await deleteCrdt(other);
     });
 
-    test('Merge deleted item', () async {
-      crdt.put('x', 1);
-      await Future.delayed(Duration(milliseconds: 1));
-      crdt.merge({'x': Record(Hlc.now('xyz'), null, hlcNow)});
-      expect(crdt.isDeleted('x'), isTrue);
-    });
-
-    test('Update HLC on merge', () {
-      crdt.put('x', 1);
-      crdt.merge({'y': Record(Hlc(_millis - 1, 0, 'xyz'), 2, hlcNow)});
-      expect(crdt.values, [1, 2]);
+    test('Update canonical time after merge', () async {
+      await crdt1.put('table', 'x', 2);
+      await crdt.merge(crdt1.getChangeset());
+      expect(
+          crdt.canonicalTime, crdt1.canonicalTime.apply(nodeId: crdt.nodeId));
     });
   });
 
-  group('Serialization', () {
-    test('To map', () {
-      final crdt = MapCrdt('abc', {
-        'x': Record<int>(Hlc(_millis, 0, 'abc'), 1, hlcNow),
-      });
-      expect(crdt.recordMap(),
-          {'x': Record<int>(Hlc(_millis, 0, 'abc'), 1, hlcNow)});
+  group('Changesets', () {
+    late TestCrdt crdt1;
+    late TestCrdt crdt2;
+
+    setUp(() async {
+      crdt = await createCrdt('crdt', 'table');
+      crdt1 = await createCrdt('crdt1', 'table');
+      crdt2 = await createCrdt('crdt2', 'table');
+
+      await crdt.put('table', 'x', 1);
+      await _delay;
+      await crdt1.put('table', 'y', 1);
+      await _delay;
+      await crdt2.put('table', 'z', 1);
+
+      await crdt.merge(crdt1.getChangeset());
+      await crdt.merge(crdt2.getChangeset());
     });
 
-    test('jsonEncodeStringKey', () {
-      final crdt = MapCrdt<String, int>('abc', {
-        'x': Record(Hlc(_millis, 0, 'abc'), 1, hlcNow),
-      });
-      expect(crdt.toJson(), '{"x":{"hlc":"$_isoTime-0000-abc","value":1}}');
+    tearDown(() async {
+      await deleteCrdt(crdt);
+      await deleteCrdt(crdt1);
+      await deleteCrdt(crdt2);
     });
 
-    test('jsonEncodeIntKey', () {
-      final crdt = MapCrdt<int, int>('abc', {
-        1: Record(Hlc(_millis, 0, 'abc'), 1, hlcNow),
-      });
-      expect(crdt.toJson(), '{"1":{"hlc":"$_isoTime-0000-abc","value":1}}');
+    test('Tables', () async {
+      final crdt3 = await createCrdt('table', 'another_table');
+      await crdt3.put('another_table', 'a', 1);
+      final changeset = crdt3.getChangeset(onlyTables: ['another_table']);
+      expect(changeset.keys, ['another_table']);
+      await deleteCrdt(crdt3);
     });
 
-    test('jsonEncodeDateTimeKey', () {
-      final crdt = MapCrdt<DateTime, int>('abc', {
-        DateTime(2000, 01, 01, 01, 20):
-            Record(Hlc(_millis, 0, 'abc'), 1, hlcNow),
-      });
-      expect(crdt.toJson(),
-          '{"2000-01-01 01:20:00.000":{"hlc":"$_isoTime-0000-abc","value":1}}');
+    test('After HLC', () {
+      print(crdt1.canonicalTime);
+      expect(crdt.getChangeset(modifiedAfter: crdt1.canonicalTime),
+          crdt2.getChangeset());
     });
 
-    test('jsonEncodeCustomClassValue', () {
-      final crdt = MapCrdt<String, TestClass>('abc', {
-        'x': Record(Hlc(_millis, 0, 'abc'), TestClass('test'), hlcNow),
-      });
-      expect(crdt.toJson(),
-          '{"x":{"hlc":"$_isoTime-0000-abc","value":{"test":"test"}}}');
+    test('Empty changeset', () {
+      print(crdt2.canonicalTime);
+      expect(crdt.getChangeset(modifiedAfter: crdt2.canonicalTime), {});
     });
 
-    test('jsonDecodeStringKey', () {
-      final crdt = MapCrdt<String, int>('abc');
-      final map = CrdtJson.decode<String, int>(
-          '{"x":{"hlc":"$_isoTime-0000-abc","value":1}}', hlcNow);
-      crdt.putRecords(map);
-      expect(crdt.recordMap(),
-          {'x': Record<int>(Hlc(_millis, 0, 'abc'), 1, hlcNow)});
+    test('At HLC', () {
+      final changeset = crdt.getChangeset(modifiedOn: crdt1.canonicalTime);
+      expect(changeset, crdt1.getChangeset());
     });
 
-    test('jsonDecodeIntKey', () {
-      final crdt = MapCrdt<int, int>('abc');
-      final map = CrdtJson.decode<int, int>(
-          '{"1":{"hlc":"$_isoTime-0000-abc","value":1}}', hlcNow,
-          keyDecoder: (key) => int.parse(key));
-      crdt.putRecords(map);
-      expect(crdt.recordMap(), {1: Record(Hlc(_millis, 0, 'abc'), 1, hlcNow)});
+    test('Only node id', () {
+      final changeset = crdt.getChangeset(onlyNodeId: crdt1.nodeId);
+      expect(changeset, crdt1.getChangeset());
     });
 
-    test('jsonDecodeDateTimeKey', () {
-      final crdt = MapCrdt<DateTime, int>('abc');
-      final map = CrdtJson.decode<DateTime, int>(
-          '{"2000-01-01 01:20:00.000":{"hlc":"$_isoTime-0000-abc","value":1}}',
-          hlcNow,
-          keyDecoder: (key) => DateTime.parse(key));
-      crdt.putRecords(map);
-      expect(crdt.recordMap(), {
-        DateTime(2000, 01, 01, 01, 20):
-            Record(Hlc(_millis, 0, 'abc'), 1, hlcNow)
-      });
-    });
-
-    test('jsonDecodeCustomClassValue', () {
-      final crdt = MapCrdt<String, TestClass>('abc');
-      final map = CrdtJson.decode<String, TestClass>(
-          '{"x":{"hlc":"$_isoTime-0000-abc","value":{"test":"test"}}}', hlcNow,
-          valueDecoder: (key, value) => TestClass.fromJson(value));
-      crdt.putRecords(map);
-      expect(crdt.recordMap(),
-          {'x': Record(Hlc(_millis, 0, 'abc'), TestClass('test'), hlcNow)});
+    test('Except node id', () {
+      final originalChangeset = crdt1.getChangeset();
+      crdt1.merge(crdt2.getChangeset());
+      final changeset = crdt1.getChangeset(exceptNodeId: crdt2.nodeId);
+      expect(changeset, originalChangeset);
     });
   });
 
-  group('Delta subsets', () {
-    late Crdt crdt;
-    final hlc1 = Hlc(_millis, 0, 'abc');
-    final hlc2 = Hlc(_millis + 1, 0, 'abc');
-    final hlc3 = Hlc(_millis + 2, 0, 'abc');
+  group('Last modified', () {
+    late TestCrdt crdt1;
+    late TestCrdt crdt2;
 
-    setUp(() {
-      crdt = MapCrdt('abc', {
-        'x': Record(hlc1, 1, hlc1),
-        'y': Record(hlc2, 2, hlc2),
+    setUp(() async {
+      crdt = await createCrdt('crdt', 'table');
+      crdt1 = await createCrdt('crdt1', 'table');
+      crdt2 = await createCrdt('crdt2', 'table');
+
+      await crdt.put('table', 'x', 1);
+      await _delay;
+      await crdt1.put('table', 'y', 1);
+      await _delay;
+      await crdt2.put('table', 'z', 1);
+
+      await crdt.merge(crdt1.getChangeset());
+      await crdt.merge(crdt2.getChangeset());
+    });
+
+    tearDown(() async {
+      await deleteCrdt(crdt);
+      await deleteCrdt(crdt1);
+      await deleteCrdt(crdt2);
+    });
+
+    test('Everything', () {
+      expect(crdt.getLastModified(),
+          crdt2.canonicalTime.apply(nodeId: crdt.nodeId));
+    });
+
+    test('Only node id', () {
+      expect(crdt.getLastModified(onlyNodeId: crdt1.nodeId),
+          crdt1.canonicalTime.apply(nodeId: crdt.nodeId));
+    });
+
+    test('Except node id', () async {
+      // Move canonical time forward in crdt
+      await _delay;
+      await crdt.put('table', 'a', 1);
+      expect(crdt.getLastModified(exceptNodeId: crdt.nodeId),
+          crdt2.canonicalTime.apply(nodeId: crdt.nodeId));
+    });
+
+    test('Assert exclusive parameters', () {
+      expect(
+          () => crdt.getLastModified(
+              onlyNodeId: crdt.nodeId, exceptNodeId: crdt.nodeId),
+          throwsA(isA<AssertionError>()));
+    });
+  });
+
+  group('Tables changed stream', () {
+    setUp(() async {
+      crdt = await createCrdt('crdt', 'table_1', 'table_2');
+    });
+
+    tearDown(() async {
+      await deleteCrdt(crdt);
+    });
+
+    test('Single change', () {
+      expectLater(
+          crdt.onTablesChanged.map((e) => e.tables), emits(['table_1']));
+      crdt.put('table_1', 'x', 1);
+    });
+
+    test('Multiple changes to same table', () {
+      expectLater(
+          crdt.onTablesChanged.map((e) => e.tables), emits(['table_1']));
+      crdt.putAll({
+        'table_1': {
+          'x': 1,
+          'y': 2,
+        }
       });
     });
 
-    test('null modifiedSince', () {
-      final map = crdt.recordMap();
-      expect(map.length, 2);
+    test('Multiple tables', () {
+      expectLater(crdt.onTablesChanged.map((e) => e.tables),
+          emits(['table_1', 'table_2']));
+      crdt.putAll({
+        'table_1': {'x': 1},
+        'table_2': {'y': 2},
+      });
     });
 
-    test('modifiedSince hlc1', () {
-      final map = crdt.recordMap(modifiedSince: hlc1);
-      expect(map.length, 2);
+    test('Do not notify empty changes', () {
+      expectLater(
+          crdt.onTablesChanged.map((e) => e.tables), emits(['table_1']));
+      crdt.putAll({
+        'table_1': {'x': 1},
+        'table_2': {},
+      });
     });
 
-    test('modifiedSince hlc2', () {
-      final map = crdt.recordMap(modifiedSince: hlc2);
-      expect(map.length, 1);
-    });
-
-    test('modifiedSince hlc3', () {
-      final map = crdt.recordMap(modifiedSince: hlc3);
-      expect(map.length, 0);
-    });
-  });
-
-  group('Delta sync', () {
-    late Crdt crdtA;
-    late Crdt crdtB;
-    late Crdt crdtC;
-
-    setUp(() {
-      crdtA = MapCrdt('a');
-      crdtB = MapCrdt('b');
-      crdtC = MapCrdt('c');
-
-      crdtA.put('x', 1);
-      sleep(Duration(milliseconds: 100));
-      crdtB.put('x', 2);
-    });
-
-    test('Merge in order', () {
-      _sync(crdtA, crdtC);
-      _sync(crdtB, crdtC);
-
-      expect(crdtA.get('x'), 1); // node A still contains the old value
-      expect(crdtB.get('x'), 2);
-      expect(crdtC.get('x'), 2);
-    });
-
-    test('Merge in reverse order', () {
-      _sync(crdtB, crdtC);
-      _sync(crdtA, crdtC);
-      _sync(crdtB, crdtC);
-
-      expect(crdtA.get('x'), 2);
-      expect(crdtB.get('x'), 2);
-      expect(crdtC.get('x'), 2);
+    test('Merge', () async {
+      final crdt1 = await createCrdt('crdt1', 'table_1', 'table_2');
+      await crdt1.put('table_1', 'x', 1);
+      // ignore: unawaited_futures
+      expectLater(
+          crdt.onTablesChanged.map((e) => e.tables), emits(['table_1']));
+      await crdt.merge(crdt1.getChangeset());
+      await deleteCrdt(crdt1);
     });
   });
-}
 
-void _sync(Crdt local, Crdt remote) {
-  final time = local.canonicalTime;
-  final l = local.recordMap();
-  remote.merge(l);
-  final r = remote.recordMap(modifiedSince: time);
-  local.merge(r);
-}
-
-class TestClass {
-  final String test;
-
-  TestClass(this.test);
-
-  static TestClass fromJson(dynamic map) => TestClass(map['test']);
-
-  Map<String, dynamic> toJson() => {'test': test};
-
-  @override
-  bool operator ==(other) => other is TestClass && test == other.test;
-
-  @override
-  int get hashCode => test.hashCode;
-
-  @override
-  String toString() => test;
+  // group('Watch', () {
+  //   setUp(() {
+  //     crdt = MapCrdt(nodeId: 'crdt')..createTable('table');
+  //   });
+  //
+  //   test('Single change', () {
+  //     expectLater(
+  //         crdt.watch.map((e) => e.tables), emits(['table_1']));
+  //     crdt.put('table_1', 'x', 1);
+  //   });
+  // });
 }

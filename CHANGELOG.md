@@ -1,3 +1,14 @@
+## 5.0.0
+This version introduces a major refactor which results in multiple breaking changes. This was done with the intention to make this package the basis for a family of CRDT libraries.
+
+Another motivation was to make this package compatible with [crdt_sync](https://github.com/cachapa/crdt_sync), thereby abstracting the communication protocol and network management for real-time remote synchronization.
+
+Changes:
+- Simplified API
+- Removed insert and get operations to make package more storage-agnostic
+- Made most methods optionally async
+- Reimplemented CrdtMap as a zero-dependency implementation
+
 ## 4.0.3
 - Update to Dart 3
 

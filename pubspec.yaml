@@ -1,6 +1,6 @@
 name: crdt
 description: Dart implementation of Conflict-free Replicated Data Types (CRDTs).
-version: 4.0.3
+version: 5.0.0
 homepage: https://github.com/cachapa/crdt
 repository: https://github.com/cachapa/crdt
 issue_tracker: https://github.com/cachapa/crdt/issues
@@ -9,7 +9,8 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  # no dependencies, no problems
+  meta: ^1.10.0
+  uuid: ^4.0.0
 
 dev_dependencies:
   lints: any

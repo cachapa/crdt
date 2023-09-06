@@ -1,170 +1,102 @@
-import 'dart:math';
+import 'dart:async';
 
-import 'crdt_json.dart';
+import 'package:meta/meta.dart';
+import 'package:uuid/uuid.dart';
+
 import 'hlc.dart';
-import 'record.dart';
+import 'types.dart';
 
-abstract class Crdt<K, V> {
-  /// Represents the latest logical time seen in the stored data
+String generateNodeId() => Uuid().v4();
+
+abstract mixin class Crdt {
   late Hlc _canonicalTime;
 
+  /// Represents the latest logical time seen in the stored data.
   Hlc get canonicalTime => _canonicalTime;
 
-  String get nodeId;
+  /// Updates the canonical time.
+  /// Should *never* be called from outside implementations.
+  @protected
+  set canonicalTime(Hlc value) => _canonicalTime = value;
 
-  /// Returns [true] if CRDT has any non-deleted records.
-  bool get isEmpty => map.isEmpty;
+  final _tableChangesController =
+      StreamController<({Hlc hlc, Iterable<String> tables})>.broadcast();
 
-  /// Get size of dataset excluding deleted records.
-  int get length => map.length;
+  /// Get this CRDT's node id
+  String get nodeId => canonicalTime.nodeId;
 
-  /// Returns a simple key-value map without HLCs or deleted records.
-  /// See [recordMap].
-  Map<K, V?> get map =>
-      (recordMap()..removeWhere((_, record) => record.isDeleted))
-          .map((key, record) => MapEntry(key, record.value));
+  /// Emits a list of the tables affected by changes in the database and the
+  /// timestamp at which they happened.
+  /// Useful for guaranteeing atomic merges across multiple tables.
+  Stream<({Hlc hlc, Iterable<String> tables})> get onTablesChanged =>
+      _tableChangesController.stream;
 
-  List<K> get keys => map.keys.toList();
+  /// Returns the last modified timestamp, optionally filtering for or against a
+  /// specific node id.
+  /// Useful to get "modified since" timestamps for synchronization.
+  /// Returns [Hlc.zero] if no timestamp is found.
+  FutureOr<Hlc> getLastModified({String? onlyNodeId, String? exceptNodeId});
 
-  List<V?> get values => map.values.toList();
+  /// Get a [Changeset] using the provided [changesetQueries].
+  ///
+  /// Set the filtering parameters to to generate subsets:
+  /// [onlyTables] only records from the specified tables. Leave empty for all.
+  /// [onlyNodeId] only records set by the specified node.
+  /// [exceptNodeId] only records not set by the specified node.
+  /// [modifiedOn] records whose modified at this exact [Hlc].
+  /// [modifiedAfter] records modified after the specified [Hlc].
+  FutureOr<CrdtChangeset> getChangeset({
+    Iterable<String>? onlyTables,
+    String? onlyNodeId,
+    String? exceptNodeId,
+    Hlc? modifiedOn,
+    Hlc? modifiedAfter,
+  });
 
-  Crdt() {
-    refreshCanonicalTime();
+  /// Checks if changeset is valid. This method is intended for implementations
+  /// and shouldn't generally be called from outside.
+  ///
+  /// Returns the highest hlc in the changeset or the canonical time, if higher.
+  @protected
+  Hlc validateChangeset(CrdtChangeset changeset) {
+    var hlc = canonicalTime;
+    // Iterate through all the incoming timestamps to:
+    // - Check for invalid entries (throws exception)
+    // - Update local canonical time if needed
+    changeset.forEach((table, records) {
+      for (final record in records) {
+        try {
+          hlc = hlc.merge(record['hlc'] as Hlc);
+        } catch (e) {
+          throw MergeError(e, table, record);
+        }
+      }
+    });
+    return hlc;
   }
 
-  /// Gets a stored value. Returns [null] if value doesn't exist.
-  V? get(K key) => getRecord(key)?.value;
+  /// Merge [changeset] with the local dataset.
+  FutureOr<void> merge(CrdtChangeset changeset);
 
-  /// Inserts or updates a value in the CRDT and increments the canonical time.
-  void put(K key, V? value) {
-    _canonicalTime = _canonicalTime.increment();
-    final record = Record<V>(_canonicalTime, value, _canonicalTime);
-    putRecord(key, record);
+  /// Notifies listeners and updates the canonical time.
+  @protected
+  void onDatasetChanged(Iterable<String> affectedTables, Hlc hlc) {
+    assert(hlc >= canonicalTime);
+
+    // Bump canonical time if the new timestamp is higher
+    if (hlc > canonicalTime) canonicalTime = hlc;
+
+    _tableChangesController.add((hlc: hlc, tables: affectedTables));
   }
+}
 
-  /// Inserts or updates all values in the CRDT and increments the canonical time accordingly.
-  void putAll(Map<K, V?> values) {
-    // Avoid touching the canonical time if no data is inserted
-    if (values.isEmpty) return;
+class MergeError<T> {
+  final T error;
+  final String table;
+  final Map<String, Object?> record;
 
-    _canonicalTime = _canonicalTime.increment();
-    final records = values.map<K, Record<V>>((key, value) =>
-        MapEntry(key, Record(_canonicalTime, value, _canonicalTime)));
-    putRecords(records);
-  }
-
-  /// Marks the record as deleted.
-  /// Note: this doesn't actually delete the record since the deletion needs to be propagated when merging with other CRDTs.
-  void delete(K key) => put(key, null);
-
-  /// Checks if a record is marked as deleted
-  /// Returns null if record does not exist
-  bool? isDeleted(K key) => getRecord(key)?.isDeleted;
-
-  /// Marks all records as deleted.
-  /// Note: by default this doesn't actually delete the records since the deletion needs to be propagated when merging with other CRDTs.
-  /// Set [purge] to true to clear the records. Useful for testing or to reset a store.
-  void clear({bool purge = false}) {
-    if (purge) {
-      this.purge();
-    } else {
-      putAll(map.map((key, _) => MapEntry(key, null)));
-    }
-  }
-
-  /// Merges two CRDTs and updates record and canonical clocks accordingly.
-  /// See also [mergeJson()].
-  void merge(Map<K, Record<V>> remoteRecords) {
-    final localRecords = recordMap();
-
-    final updatedRecords = (remoteRecords
-          ..removeWhere((key, value) {
-            _canonicalTime = _canonicalTime.merge(value.hlc);
-            return localRecords[key] != null &&
-                localRecords[key]!.hlc >= value.hlc;
-          }))
-        .map((key, value) =>
-            MapEntry(key, Record<V>(value.hlc, value.value, _canonicalTime)));
-
-    // Store updated records
-    putRecords(updatedRecords);
-
-    // Increment canonical time
-    _canonicalTime = _canonicalTime.increment();
-  }
-
-  /// Merges two CRDTs and updates record and canonical clocks accordingly.
-  /// Use [keyDecoder] to convert non-string keys.
-  /// Use [valueDecoder] to convert non-native value types.
-  /// See also [merge()].
-  void mergeJson(String json,
-      {KeyDecoder<K>? keyDecoder, ValueDecoder<V>? valueDecoder}) {
-    final map = CrdtJson.decode<K, V>(
-      json,
-      _canonicalTime,
-      keyDecoder: keyDecoder,
-      valueDecoder: valueDecoder,
-    );
-    merge(map);
-  }
-
-  /// Iterates through the CRDT to find the highest HLC timestamp.
-  /// Used to seed the Canonical Time.
-  /// Should be overridden if the implementation can do it more efficiently.
-  void refreshCanonicalTime() {
-    final map = recordMap();
-    _canonicalTime = Hlc.fromLogicalTime(
-        map.isEmpty
-            ? 0
-            : map.values.map((record) => record.hlc.logicalTime).reduce(max),
-        nodeId);
-  }
-
-  /// Outputs the contents of this CRDT in Json format.
-  /// Use [modifiedSince] to encode only the most recently modified records.
-  /// Use [keyEncoder] to convert non-string keys.
-  /// Use [valueEncoder] to convert non-native value types.
-  String toJson(
-          {Hlc? modifiedSince,
-          KeyEncoder<K>? keyEncoder,
-          ValueEncoder<K, V>? valueEncoder}) =>
-      CrdtJson.encode(
-        recordMap(modifiedSince: modifiedSince),
-        keyEncoder: keyEncoder,
-        valueEncoder: valueEncoder,
-      );
+  MergeError(this.error, this.table, this.record);
 
   @override
-  String toString() => recordMap().toString();
-
-  //=== Abstract methods ===//
-
-  bool containsKey(K key);
-
-  /// Gets record containing value and HLC.
-  Record<V>? getRecord(K key);
-
-  /// Stores record without updating the HLC.
-  /// Meant for subclassing, clients should use [put()] instead.
-  /// Make sure to call [refreshCanonicalTime()] if using this method directly.
-  void putRecord(K key, Record<V> value);
-
-  /// Stores records without updating the HLC.
-  /// Meant for subclassing, clients should use [putAll()] instead.
-  /// Make sure to call [refreshCanonicalTime()] if using this method directly.
-  void putRecords(Map<K, Record<V>> recordMap);
-
-  /// Retrieves CRDT map including HLCs. Useful for merging with other CRDTs.
-  /// Use [modifiedSince] to get only the most recently modified records.
-  /// See also [toJson()].
-  Map<K, Record<V>> recordMap({Hlc? modifiedSince});
-
-  /// Watch for changes to this CRDT.
-  /// Use [key] to monitor a specific key.
-  Stream<MapEntry<K, V?>> watch({K key});
-
-  /// Clear all records. Records will be removed rather than being marked as deleted.
-  /// Useful for testing or to reset a store.
-  /// See also [clear].
-  void purge();
+  String toString() => '$error\n$table: $record';
 }

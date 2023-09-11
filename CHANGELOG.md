@@ -1,3 +1,6 @@
+## 5.0.1
+- Fix dependency compatibility with the Flutter SDK
+
 ## 5.0.0
 This version introduces a major refactor which results in multiple breaking changes. This was done with the intention to make this package the basis for a family of CRDT libraries.
 

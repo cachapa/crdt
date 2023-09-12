@@ -90,6 +90,8 @@ abstract mixin class Crdt {
   }
 }
 
+/// Thrown on merge errors. Contains the failed payload to help with debugging
+/// large datasets.
 class MergeError<T> {
   final T error;
   final String table;

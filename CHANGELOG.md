@@ -1,3 +1,6 @@
+## 5.0.2
+- Add convenience function to parse over-the-wire changesets
+
 ## 5.0.1
 - Fix dependency compatibility with the Flutter SDK
 

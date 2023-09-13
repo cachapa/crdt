@@ -29,18 +29,31 @@ void main() {
   crdt1.put('table', 'a', 1);
   crdt1.put('table', 'b', 1);
 
-  print('crdt1: ${crdt1.get('table')}');
+  print('crdt1: ${crdt1.getMap('table')}');
 
   print('\nInserting a conflicting record in crdt2…');
   crdt2.put('table', 'a', 2);
 
-  print('crdt2: ${crdt2.get('table')}');
+  print('crdt2: ${crdt2.getMap('table')}');
 
   print('\nMerging crdt2 into crdt1…');
   crdt1.merge(crdt2.getChangeset());
 
-  print('crdt1: ${crdt1.get('table')}');
+  print('crdt1: ${crdt1.getMap('table')}');
 }
+```
+
+The above code will output:
+
+```
+Inserting 2 records in crdt1…
+crdt1: {a: 1, b: 1}
+
+Inserting a conflicting record in crdt2…
+crdt2: {a: 2}
+
+Merging crdt2 into crdt1…
+crdt1: {a: 2, b: 1}
 ```
 
 ## Implementations

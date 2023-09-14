@@ -1,35 +1,33 @@
 import 'package:crdt/src/hlc.dart';
 import 'package:test/test.dart';
 
-const _millis = 1000000000000;
 const _isoTime = '2001-09-09T01:46:40.000Z';
-const _logicalTime = 65536000000000066;
+final _dateTime = DateTime.parse(_isoTime);
 
 void main() {
   group('Constructors', () {
-    final hlc = Hlc(_millis, 0x42, 'abc');
+    final hlc = Hlc(_dateTime, 0x42, 'abc');
 
     test('default', () {
-      expect(hlc.millis, _millis);
+      expect(hlc.dateTime, _dateTime);
       expect(hlc.counter, 0x42);
       expect(hlc.nodeId, 'abc');
     });
 
     test('default with microseconds', () {
-      expect(Hlc(_millis * 1000, 0x42, 'abc'), hlc);
+      expect(Hlc(DateTime.parse('2001-09-09T01:46:40.000Z'), 0x42, 'abc'), hlc);
     });
 
     test('zero', () {
-      expect(Hlc.zero('abc'), hlc.apply(millis: 0, counter: 0));
+      expect(
+          Hlc.zero('abc'),
+          hlc.apply(
+              dateTime: DateTime.fromMillisecondsSinceEpoch(0), counter: 0));
     });
 
     test('from date', () {
       expect(
           Hlc.fromDate(DateTime.parse(_isoTime), 'abc'), hlc.apply(counter: 0));
-    });
-
-    test('logical time', () {
-      expect(Hlc.fromLogicalTime(_logicalTime, 'abc'), hlc);
     });
 
     test('parse', () {
@@ -44,7 +42,7 @@ void main() {
     });
 
     test('Parse hlc', () {
-      expect(Hlc.parse('$_isoTime-0042-abc'), Hlc(_millis, 0x42, 'abc'));
+      expect(Hlc.parse('$_isoTime-0042-abc'), Hlc(_dateTime, 0x42, 'abc'));
     });
   });
 
@@ -64,8 +62,8 @@ void main() {
     });
 
     test('Less than millis', () {
-      final hlc1 = Hlc(_millis, 0x42, 'abc');
-      final hlc2 = Hlc(_millis + 1, 0, 'abc');
+      final hlc1 = Hlc(_dateTime, 0x42, 'abc');
+      final hlc2 = Hlc(_dateTime.increment(), 0, 'abc');
       expect(hlc1 < hlc2, isTrue);
       expect(hlc1 <= hlc2, isTrue);
     });
@@ -91,100 +89,83 @@ void main() {
     });
 
     test('Fail less than if millis and counter disagree', () {
-      final hlc1 = Hlc(_millis + 1, 0, 'abc');
-      final hlc2 = Hlc(_millis, 0x42, 'abc');
+      final hlc1 = Hlc(_dateTime.increment(), 0, 'abc');
+      final hlc2 = Hlc(_dateTime, 0x42, 'abc');
       expect(hlc1 < hlc2, isFalse);
     });
 
     test('More than millis', () {
-      final hlc1 = Hlc(_millis + 1, 0x42, 'abc');
-      final hlc2 = Hlc(_millis, 0, 'abc');
+      final hlc1 = Hlc(_dateTime.increment(), 0x42, 'abc');
+      final hlc2 = Hlc(_dateTime, 0, 'abc');
       expect(hlc1 > hlc2, isTrue);
       expect(hlc1 >= hlc2, isTrue);
     });
 
     test('More than counter', () {
-      final hlc1 = Hlc(_millis + 1, 0x42, 'abc');
-      final hlc2 = Hlc(_millis, 0, 'abc');
+      final hlc1 = Hlc(_dateTime.increment(), 0x42, 'abc');
+      final hlc2 = Hlc(_dateTime, 0, 'abc');
       expect(hlc1 > hlc2, isTrue);
       expect(hlc1 >= hlc2, isTrue);
     });
 
     test('More than node id', () {
-      final hlc1 = Hlc(_millis, 0x42, 'abc');
-      final hlc2 = Hlc(_millis, 0x42, 'abb');
+      final hlc1 = Hlc(_dateTime, 0x42, 'abc');
+      final hlc2 = Hlc(_dateTime, 0x42, 'abb');
       expect(hlc1 > hlc2, isTrue);
       expect(hlc1 >= hlc2, isTrue);
     });
 
     test('Compare', () {
-      final hlc = Hlc(_millis, 0x42, 'abc');
-      expect(hlc.compareTo(Hlc(_millis, 0x42, 'abc')), 0);
+      final hlc = Hlc(_dateTime, 0x42, 'abc');
+      expect(hlc.compareTo(Hlc(_dateTime, 0x42, 'abc')), 0);
 
-      expect(hlc.compareTo(Hlc(_millis + 1, 0x42, 'abc')), -1);
-      expect(hlc.compareTo(Hlc(_millis, 0x43, 'abc')), -1);
-      expect(hlc.compareTo(Hlc(_millis, 0x42, 'abd')), -1);
+      expect(hlc.compareTo(Hlc(_dateTime.increment(), 0x42, 'abc')), -1);
+      expect(hlc.compareTo(Hlc(_dateTime, 0x43, 'abc')), -1);
+      expect(hlc.compareTo(Hlc(_dateTime, 0x42, 'abd')), -1);
 
-      expect(hlc.compareTo(Hlc(_millis - 1, 0x42, 'abc')), 1);
-      expect(hlc.compareTo(Hlc(_millis, 0x41, 'abc')), 1);
-      expect(hlc.compareTo(Hlc(_millis, 0x42, 'abb')), 1);
-    });
-  });
-
-  group('Logical time representation', () {
-    test('Logical time stability', () {
-      final hlc = Hlc.fromLogicalTime(_logicalTime, 'abc');
-      expect(hlc.logicalTime, _logicalTime);
-    });
-
-    test('Hlc as logical time', () {
-      final hlc = Hlc.parse('$_isoTime-0042-abc');
-      expect(hlc.logicalTime, _logicalTime);
-    });
-
-    test('Hlc from logical time', () {
-      final hlc = Hlc.parse('$_isoTime-0042-abc');
-      expect(Hlc.fromLogicalTime(_logicalTime, 'abc'), hlc);
+      expect(hlc.compareTo(Hlc(_dateTime.decrement(), 0x42, 'abc')), 1);
+      expect(hlc.compareTo(Hlc(_dateTime, 0x41, 'abc')), 1);
+      expect(hlc.compareTo(Hlc(_dateTime, 0x42, 'abb')), 1);
     });
   });
 
   group('Send', () {
     test('Higher canonical time', () {
-      final hlc = Hlc(_millis + 1, 0x42, 'abc');
-      final sendHlc = hlc.increment(wallMillis: _millis);
+      final hlc = Hlc(_dateTime.increment(), 0x42, 'abc');
+      final sendHlc = hlc.increment(wallTime: _dateTime);
       expect(sendHlc, isNot(hlc));
-      expect(sendHlc.millis, hlc.millis);
+      expect(sendHlc.dateTime, hlc.dateTime);
       expect(sendHlc.counter, 0x43);
       expect(sendHlc.nodeId, hlc.nodeId);
     });
 
     test('Equal canonical time', () {
-      final hlc = Hlc(_millis, 0x42, 'abc');
-      final sendHlc = hlc.increment(wallMillis: _millis);
+      final hlc = Hlc(_dateTime, 0x42, 'abc');
+      final sendHlc = hlc.increment(wallTime: _dateTime);
       expect(sendHlc, isNot(hlc));
-      expect(sendHlc.millis, _millis);
+      expect(sendHlc.dateTime, _dateTime);
       expect(sendHlc.counter, 0x43);
       expect(sendHlc.nodeId, hlc.nodeId);
     });
 
     test('Lower canonical time', () {
-      final hlc = Hlc(_millis - 1, 0x42, 'abc');
-      final sendHlc = hlc.increment(wallMillis: _millis);
+      final hlc = Hlc(_dateTime.decrement(), 0x42, 'abc');
+      final sendHlc = hlc.increment(wallTime: _dateTime);
       expect(sendHlc, isNot(hlc));
-      expect(sendHlc.millis, _millis);
+      expect(sendHlc.dateTime, _dateTime);
       expect(sendHlc.counter, 0);
       expect(sendHlc.nodeId, hlc.nodeId);
     });
 
     test('Fail on clock drift', () {
-      final hlc = Hlc(_millis + 60001, 0, 'abc');
-      expect(() => hlc.increment(wallMillis: _millis),
+      final hlc = Hlc(_dateTime.increment(60001), 0, 'abc');
+      expect(() => hlc.increment(wallTime: _dateTime),
           throwsA(isA<ClockDriftException>()));
     });
 
     test('Fail on counter overflow', () {
-      final hlc = Hlc(_millis, 0xFFFF, 'abc');
-      expect(() => hlc.increment(wallMillis: _millis),
+      final hlc = Hlc(_dateTime, 0xFFFF, 'abc');
+      expect(() => hlc.increment(wallTime: _dateTime),
           throwsA(isA<OverflowException>()));
     });
   });
@@ -193,49 +174,55 @@ void main() {
     final canonical = Hlc.parse('$_isoTime-0042-abc');
 
     test('Higher canonical time', () {
-      final remote = Hlc(_millis - 1, 0x42, 'abcd');
-      final hlc = canonical.merge(remote, wallMillis: _millis);
+      final remote = Hlc(_dateTime.decrement(), 0x42, 'abcd');
+      final hlc = canonical.merge(remote, wallTime: _dateTime);
       expect(hlc, equals(canonical));
     });
 
     test('Same remote time', () {
-      final remote = Hlc(_millis, 0x42, 'abcd');
-      final hlc = canonical.merge(remote, wallMillis: _millis);
-      expect(hlc, Hlc(remote.millis, remote.counter, canonical.nodeId));
+      final remote = Hlc(_dateTime, 0x42, 'abcd');
+      final hlc = canonical.merge(remote, wallTime: _dateTime);
+      expect(hlc, Hlc(remote.dateTime, remote.counter, canonical.nodeId));
     });
 
     test('Higher remote time', () {
-      final remote = Hlc(_millis + 1, 0, 'abcd');
-      final hlc = canonical.merge(remote, wallMillis: _millis);
-      expect(hlc, Hlc(remote.millis, remote.counter, canonical.nodeId));
+      final remote = Hlc(_dateTime.increment(), 0, 'abcd');
+      final hlc = canonical.merge(remote, wallTime: _dateTime);
+      expect(hlc, Hlc(remote.dateTime, remote.counter, canonical.nodeId));
     });
 
     test('Higher wall clock time', () {
       final remote = Hlc.parse('$_isoTime-0000-abcd');
-      final hlc = canonical.merge(remote, wallMillis: _millis + 1);
+      final hlc = canonical.merge(remote, wallTime: _dateTime.increment());
       expect(hlc, canonical);
     });
 
     test('Skip node id check if time is lower', () {
-      final remote = Hlc(_millis - 1, 0x42, 'abc');
-      expect(canonical.merge(remote, wallMillis: _millis), canonical);
+      final remote = Hlc(_dateTime.decrement(), 0x42, 'abc');
+      expect(canonical.merge(remote, wallTime: _dateTime), canonical);
     });
 
     test('Skip node id check if time is same', () {
-      final remote = Hlc(_millis, 0x42, 'abc');
-      expect(canonical.merge(remote, wallMillis: _millis), canonical);
+      final remote = Hlc(_dateTime, 0x42, 'abc');
+      expect(canonical.merge(remote, wallTime: _dateTime), canonical);
     });
 
     test('Fail on node id', () {
-      final remote = Hlc(_millis + 1, 0, 'abc');
-      expect(() => canonical.merge(remote, wallMillis: _millis),
+      final remote = Hlc(_dateTime.increment(), 0, 'abc');
+      expect(() => canonical.merge(remote, wallTime: _dateTime),
           throwsA(isA<DuplicateNodeException>()));
     });
 
     test('Fail on clock drift', () {
-      final remote = Hlc(_millis + 60001, 0x42, 'abcd');
-      expect(() => canonical.merge(remote, wallMillis: _millis),
+      final remote = Hlc(_dateTime.increment(60001), 0x42, 'abcd');
+      expect(() => canonical.merge(remote, wallTime: _dateTime),
           throwsA(isA<ClockDriftException>()));
     });
   });
+}
+
+extension on DateTime {
+  DateTime increment([int? millis]) => add(Duration(milliseconds: millis ?? 1));
+
+  DateTime decrement() => subtract(Duration(milliseconds: 1));
 }

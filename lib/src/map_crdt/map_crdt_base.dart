@@ -94,6 +94,11 @@ abstract class MapCrdtBase extends Crdt {
     onDatasetChanged(records.keys, hlc);
   }
 
+  /// Returns a stream of changes.
+  /// Use the optional [key] parameter to filter events or leave it empty to get
+  /// all changes.
+  Stream<({String key, dynamic value})> watch(String table, {String? key});
+
   @override
   CrdtChangeset getChangeset({
     Iterable<String>? onlyTables,

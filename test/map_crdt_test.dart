@@ -357,15 +357,22 @@ void main() {
     });
   });
 
-  // group('Watch', () {
-  //   setUp(() {
-  //     crdt = MapCrdt(nodeId: 'crdt')..createTable('table');
-  //   });
-  //
-  //   test('Single change', () {
-  //     expectLater(
-  //         crdt.watch.map((e) => e.tables), emits(['table_1']));
-  //     crdt.put('table_1', 'x', 1);
-  //   });
-  // });
+  group('Watch', () {
+    setUp(() async => crdt = await createCrdt('crdt', 'table'));
+
+    tearDown(() => deleteCrdt(crdt));
+
+    test('Single change', () async {
+      // ignore: unawaited_futures
+      expectLater(crdt.watch('table'), emits((key: 'x', value: 1)));
+      await crdt.put('table', 'x', 1);
+    });
+
+    test('Enforce table existence', () {
+      expect(
+        () => crdt.watch('not_table'),
+        throwsA('Unknown table: not_table'),
+      );
+    });
+  });
 }

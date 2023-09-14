@@ -1,4 +1,4 @@
-import 'package:crdt/src/map_crdt/map_crdt.dart';
+import 'package:crdt/map_crdt.dart';
 
 void main() {
   var crdt1 = MapCrdt(['table']);

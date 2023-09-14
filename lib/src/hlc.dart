@@ -10,12 +10,13 @@ class Hlc implements Comparable<Hlc> {
   final int counter;
   final String nodeId;
 
-  const Hlc(this.dateTime, this.counter, this.nodeId)
-      : assert(counter <= _maxCounter);
+  Hlc(DateTime dateTime, this.counter, this.nodeId)
+      : dateTime = dateTime.toUtc(),
+        assert(counter <= _maxCounter);
 
   /// Instantiates an Hlc at the beginning of time and space: January 1, 1970.
   Hlc.zero(String nodeId)
-      : this(DateTime.fromMillisecondsSinceEpoch(0), 0, nodeId);
+      : this(DateTime.fromMillisecondsSinceEpoch(0, isUtc: true), 0, nodeId);
 
   /// Instantiates an Hlc at [dateTime] with logical counter zero.
   Hlc.fromDate(DateTime dateTime, String nodeId) : this(dateTime, 0, nodeId);
@@ -44,7 +45,7 @@ class Hlc implements Comparable<Hlc> {
   /// The local wall time will be used if [wallTime] isn't supplied.
   Hlc increment({DateTime? wallTime}) {
     // Retrieve the local wall time if millis is null
-    wallTime ??= DateTime.now();
+    wallTime = (wallTime ?? DateTime.now()).toUtc();
 
     // Calculate the next time and counter
     // * ensure that the logical time never goes backward
@@ -68,7 +69,7 @@ class Hlc implements Comparable<Hlc> {
   /// Local wall time will be used if [wallTime] isn't supplied.
   Hlc merge(Hlc remote, {DateTime? wallTime}) {
     // Retrieve the local wall time if millis is null
-    wallTime ??= DateTime.now();
+    wallTime = (wallTime ?? DateTime.now()).toUtc();
 
     // No need to do any more work if our date + counter is same or higher
     if (remote.dateTime.isBefore(dateTime) ||

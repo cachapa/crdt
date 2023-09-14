@@ -1,3 +1,7 @@
+## 5.1.1
+
+- Remove timezone drift from `Hlc.toString`
+
 ## 5.1.0
 
 - Fix `Hlc` in Dart web

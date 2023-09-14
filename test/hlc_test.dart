@@ -19,10 +19,12 @@ void main() {
     });
 
     test('zero', () {
+      final zero = Hlc.zero('abc');
       expect(
-          Hlc.zero('abc'),
+          zero,
           hlc.apply(
               dateTime: DateTime.fromMillisecondsSinceEpoch(0), counter: 0));
+      expect(zero.toString(), '1970-01-01T00:00:00.000Z-0000-abc');
     });
 
     test('from date', () {

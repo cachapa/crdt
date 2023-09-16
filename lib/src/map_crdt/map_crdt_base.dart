@@ -7,6 +7,8 @@ import '../hlc.dart';
 import '../types.dart';
 import 'record.dart';
 
+typedef WatchEvent = ({String key, dynamic value, bool isDeleted});
+
 /// A CRDT backed by a simple in-memory hashmap.
 /// Useful for testing, or for applications which only require small, ephemeral
 /// datasets. It is incredibly inefficient.
@@ -97,7 +99,7 @@ abstract class MapCrdtBase extends Crdt {
   /// Returns a stream of changes.
   /// Use the optional [key] parameter to filter events or leave it empty to get
   /// all changes.
-  Stream<({String key, dynamic value})> watch(String table, {String? key});
+  Stream<WatchEvent> watch(String table, {String? key});
 
   @override
   CrdtChangeset getChangeset({

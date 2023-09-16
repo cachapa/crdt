@@ -8,7 +8,8 @@ import 'record.dart';
 /// datasets. It is incredibly inefficient.
 class MapCrdt extends MapCrdtBase {
   final Map<String, Map<String, Record>> _recordMaps;
-  final Map<String, StreamController<({String key, dynamic value})>>
+  final Map<String,
+          StreamController<({String key, dynamic value, bool isDeleted})>>
       _changeControllers;
 
   @override
@@ -37,13 +38,14 @@ class MapCrdt extends MapCrdtBase {
   void putRecords(Map<String, Map<String, Record>> dataset) {
     dataset.forEach((table, records) {
       _recordMaps[table]!.addAll(records);
-      records.forEach((key, value) =>
-          _changeControllers[table]!.add((key: key, value: value.value)));
+      records.forEach((key, record) => _changeControllers[table]!
+          .add((key: key, value: record.value, isDeleted: record.isDeleted)));
     });
   }
 
   @override
-  Stream<({String key, dynamic value})> watch(String table, {String? key}) {
+  Stream<({String key, dynamic value, bool isDeleted})> watch(String table,
+      {String? key}) {
     if (!tables.contains(table)) throw 'Unknown table: $table';
     return key == null
         ? _changeControllers[table]!.stream

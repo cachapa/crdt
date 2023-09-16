@@ -1,3 +1,7 @@
+## 5.1.2
+
+- Add `isDeleted` flag to watched change events
+
 ## 5.1.1
 
 - Remove timezone drift from `Hlc.toString`

@@ -364,8 +364,16 @@ void main() {
 
     test('Single change', () async {
       // ignore: unawaited_futures
-      expectLater(crdt.watch('table'), emits((key: 'x', value: 1)));
+      expectLater(
+          crdt.watch('table'), emits((key: 'x', value: 1, isDeleted: false)));
       await crdt.put('table', 'x', 1);
+    });
+
+    test('Deleted', () async {
+      // ignore: unawaited_futures
+      expectLater(
+          crdt.watch('table'), emits((key: 'x', value: 1, isDeleted: true)));
+      await crdt.put('table', 'x', 1, true);
     });
 
     test('Enforce table existence', () {

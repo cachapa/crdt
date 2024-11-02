@@ -10,8 +10,8 @@ environment:
 
 dependencies:
   # Prevent ongoing dependency issues since this package is bundled with the Flutter SDK
-  meta: '>=1.0.0 <2.0.0'
-  uuid: ^4.0.0
+  meta: '>=1.0.0 <2.0.0' 
+  uuid: ^4.5.1
 
 dev_dependencies:
   lints: any

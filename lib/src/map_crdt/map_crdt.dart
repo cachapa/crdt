@@ -19,14 +19,13 @@ class MapCrdt extends MapCrdtBase {
   bool get isNotEmpty => !isEmpty;
 
   /// Instantiate a MapCrdt object with empty [tables].
-  MapCrdt(Iterable<String> tables)
+  MapCrdt(super.tables)
       : _recordMaps = {for (final table in tables.toSet()) table: {}},
         _changeControllers = {
           for (final table in tables.toSet())
             table: StreamController.broadcast()
         },
-        assert(tables.isNotEmpty),
-        super(tables);
+        assert(tables.isNotEmpty);
 
   @override
   Record? getRecord(String table, String key) => _recordMaps[table]![key];

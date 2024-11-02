@@ -1,3 +1,7 @@
+## 5.1.3
+
+- Update dependencies
+
 ## 5.1.2
 
 - Add `isDeleted` flag to watched change events

@@ -15,8 +15,7 @@ class Hlc implements Comparable<Hlc> {
         assert(counter <= _maxCounter);
 
   /// Instantiates an Hlc at the beginning of time and space: January 1, 1970.
-  Hlc.zero(String nodeId)
-      : this(DateTime.fromMillisecondsSinceEpoch(0, isUtc: true), 0, nodeId);
+  Hlc.zero(String nodeId) : this(DateTime.utc(1970), 0, nodeId);
 
   /// Instantiates an Hlc at [dateTime] with logical counter zero.
   Hlc.fromDate(DateTime dateTime, String nodeId) : this(dateTime, 0, nodeId);

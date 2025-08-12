@@ -65,8 +65,14 @@ abstract mixin class Crdt {
     // - Update local canonical time if needed
     changeset.forEach((table, records) {
       for (final record in records) {
+        final recordHlc = switch (record['hlc']) {
+          final Hlc hlc => hlc,
+          final String hlc => Hlc.parse(hlc),
+          _ => throw InvalidHlcError(
+              'Invalid hlc: ${record['hlc']}', table, record),
+        };
         try {
-          hlc = hlc.merge(record['hlc'] as Hlc);
+          hlc = hlc.merge(recordHlc);
         } catch (e) {
           throw MergeError(e, table, record);
         }
@@ -88,6 +94,18 @@ abstract mixin class Crdt {
 
     _tableChangesController.add((hlc: hlc, tables: affectedTables));
   }
+}
+
+/// Thrown on merge errors when the hlc is invalid or not present.
+class InvalidHlcError {
+  final Object? hlc;
+  final String table;
+  final Map<String, Object?> record;
+
+  InvalidHlcError(this.hlc, this.table, this.record);
+
+  @override
+  String toString() => 'Invalid hlc: $hlc.\n$table: $record';
 }
 
 /// Thrown on merge errors. Contains the failed payload to help with debugging

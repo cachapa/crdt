@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
+import 'changeset.dart';
 import 'hlc.dart';
-import 'types.dart';
 
 String generateNodeId() => Uuid().v4();
 
@@ -34,19 +34,19 @@ abstract mixin class Crdt {
   /// Returns the last modified timestamp, optionally filtering for or against a
   /// specific node id.
   /// Useful to get "modified since" timestamps for synchronization.
-  /// Returns [Hlc.zero] if no timestamp is found.
-  FutureOr<Hlc> getLastModified({String? onlyNodeId, String? exceptNodeId});
+  /// Returns null if no timestamp is found.
+  FutureOr<Hlc?> getLastModified({String? onlyNodeId, String? exceptNodeId});
 
   /// Get a [Changeset] using the provided [changesetQueries].
   ///
   /// Set the filtering parameters to to generate subsets:
-  /// [onlyTables] only records from the specified tables. Leave empty for all.
+  /// [onlyCollections] only records from the specified tables. Leave empty for all.
   /// [onlyNodeId] only records set by the specified node.
   /// [exceptNodeId] only records not set by the specified node.
   /// [modifiedOn] records whose modified at this exact [Hlc].
   /// [modifiedAfter] records modified after the specified [Hlc].
   FutureOr<CrdtChangeset> getChangeset({
-    Iterable<String>? onlyTables,
+    Iterable<String>? onlyCollections,
     String? onlyNodeId,
     String? exceptNodeId,
     Hlc? modifiedOn,
@@ -63,12 +63,12 @@ abstract mixin class Crdt {
     // Iterate through all the incoming timestamps to:
     // - Check for invalid entries (throws exception)
     // - Update local canonical time if needed
-    changeset.forEach((table, records) {
+    changeset.forEach((collection, records) {
       for (final record in records) {
         try {
-          hlc = hlc.merge(record['hlc'] as Hlc);
+          hlc = hlc.merge(record.hlc);
         } catch (e) {
-          throw MergeError(e, table, record);
+          throw MergeError(e, collection, record);
         }
       }
     });
@@ -95,7 +95,7 @@ abstract mixin class Crdt {
 class MergeError<T> {
   final T error;
   final String table;
-  final Map<String, Object?> record;
+  final CrdtRecord record;
 
   MergeError(this.error, this.table, this.record);
 

@@ -3,13 +3,14 @@ import 'dart:async';
 import 'package:crdt/crdt.dart';
 import 'package:crdt/map_crdt.dart';
 import 'package:test/test.dart';
+import 'package:uuid/uuid.dart';
 
 Future<void> get _delay => Future.delayed(Duration(milliseconds: 1));
 
 typedef TestCrdt = MapCrdt;
 
-Future<TestCrdt> createCrdt(String collection, String table1,
-        [String? table2]) async =>
+FutureOr<TestCrdt> createCrdt(String collection, String table1,
+        [String? table2]) =>
     MapCrdt([table1, table2].nonNulls);
 
 Future<void> deleteCrdt(TestCrdt crdt) async {}
@@ -28,7 +29,7 @@ void main() {
 
     test('Node ID', () {
       print(crdt.isEmpty);
-      // expect(Uuid.isValidUUID(fromString: crdt.nodeId), true);
+      expect(Uuid.isValidUUID(fromString: crdt.nodeId), true);
     });
 
     test('Empty', () {
@@ -91,20 +92,12 @@ void main() {
     });
 
     test('Set deleted', () async {
-      await crdt.put('table', 'x', 1, true);
+      await crdt.put('table', 'x', 1);
       expect(crdt.isEmpty, false);
       expect(crdt.getChangeset().recordCount, 1);
+      await crdt.delete('table', 'x');
       expect(crdt.getMap('table').length, 0);
       expect(crdt.get('table', 'x'), null);
-    });
-
-    test('Undelete', () async {
-      await crdt.put('table', 'x', 1, true);
-      await crdt.put('table', 'x', 1, false);
-      expect(crdt.isEmpty, false);
-      expect(crdt.getChangeset().recordCount, 1);
-      expect(crdt.getMap('table').length, 1);
-      expect(crdt.get('table', 'x'), 1);
     });
   });
 
@@ -152,11 +145,9 @@ void main() {
     test('Lower node id', () async {
       await crdt.put('table', 'x', 1);
       final changeset = crdt.getChangeset();
-      changeset['table']!.first.addAll({
-        'hlc': (changeset['table']!.first['hlc'] as Hlc)
-            .apply(nodeId: '00000000-0000-0000-0000-000000000000'),
-        'value': 2,
-      });
+      final record = changeset['table']!.first;
+      changeset['table']!.first = CrdtRecord(record.id,
+          record.hlc.apply(nodeId: '00000000-0000-0000-0000-000000000000'), 2);
       await crdt.merge(changeset);
       expect(crdt.get('table', 'x'), 1);
     });
@@ -164,11 +155,9 @@ void main() {
     test('Higher node id', () async {
       await crdt.put('table', 'x', 1);
       final changeset = crdt.getChangeset();
-      changeset['table']!.first.addAll({
-        'hlc': (changeset['table']!.first['hlc'] as Hlc)
-            .apply(nodeId: 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
-        'value': 2,
-      });
+      final record = changeset['table']!.first;
+      changeset['table']!.first = CrdtRecord(record.id,
+          record.hlc.apply(nodeId: 'ffffffff-ffff-ffff-ffff-ffffffffffff'), 2);
       await crdt.merge(changeset);
       expect(crdt.get('table', 'x'), 2);
     });
@@ -190,6 +179,7 @@ void main() {
   });
 
   group('Changesets', () {
+    late Hlc crdtInitialHlc;
     late TestCrdt crdt1;
     late TestCrdt crdt2;
 
@@ -204,6 +194,7 @@ void main() {
       await _delay;
       await crdt2.put('table', 'z', 1);
 
+      crdtInitialHlc = crdt.canonicalTime;
       await crdt.merge(crdt1.getChangeset());
       await crdt.merge(crdt2.getChangeset());
     });
@@ -214,40 +205,51 @@ void main() {
       await deleteCrdt(crdt2);
     });
 
+    test('Records properly merged', () async {
+      expect(
+          crdt.getChangeset().toString(),
+          {
+            'table': [
+              {'id': 'x', 'hlc': crdtInitialHlc, 'data': 1},
+              {'id': 'y', 'hlc': crdt1.canonicalTime, 'data': 1},
+              {'id': 'z', 'hlc': crdt2.canonicalTime, 'data': 1}
+            ]
+          }.toString());
+    });
+
     test('Tables', () async {
       final crdt3 = await createCrdt('table', 'another_table');
       await crdt3.put('another_table', 'a', 1);
-      final changeset = crdt3.getChangeset(onlyTables: ['another_table']);
-      expect(changeset.keys, ['another_table']);
+      final changeset = crdt3.getChangeset(onlyCollections: ['another_table']);
+      expect(changeset.collections, ['another_table']);
       await deleteCrdt(crdt3);
     });
 
     test('After HLC', () {
-      print(crdt1.canonicalTime);
-      expect(crdt.getChangeset(modifiedAfter: crdt1.canonicalTime),
-          crdt2.getChangeset());
+      expect(crdt.getChangeset(modifiedAfter: crdt1.canonicalTime).toString(),
+          crdt2.getChangeset().toString());
     });
 
     test('Empty changeset', () {
-      print(crdt2.canonicalTime);
-      expect(crdt.getChangeset(modifiedAfter: crdt2.canonicalTime), {});
+      expect(crdt.getChangeset(modifiedAfter: crdt2.canonicalTime).recordCount,
+          isZero);
     });
 
     test('At HLC', () {
       final changeset = crdt.getChangeset(modifiedOn: crdt1.canonicalTime);
-      expect(changeset, crdt1.getChangeset());
+      expect(changeset.toString(), crdt1.getChangeset().toString());
     });
 
     test('Only node id', () {
       final changeset = crdt.getChangeset(onlyNodeId: crdt1.nodeId);
-      expect(changeset, crdt1.getChangeset());
+      expect(changeset.toString(), crdt1.getChangeset().toString());
     });
 
     test('Except node id', () {
       final originalChangeset = crdt1.getChangeset();
       crdt1.merge(crdt2.getChangeset());
       final changeset = crdt1.getChangeset(exceptNodeId: crdt2.nodeId);
-      expect(changeset, originalChangeset);
+      expect(changeset.toString(), originalChangeset.toString());
     });
   });
 
@@ -363,23 +365,20 @@ void main() {
     tearDown(() => deleteCrdt(crdt));
 
     test('Single change', () async {
-      // ignore: unawaited_futures
-      expectLater(
-          crdt.watch('table'), emits((key: 'x', value: 1, isDeleted: false)));
+      unawaited(expectLater(crdt.watch('table'), emits((key: 'x', value: 1))));
       await crdt.put('table', 'x', 1);
     });
 
     test('Deleted', () async {
-      // ignore: unawaited_futures
-      expectLater(
-          crdt.watch('table'), emits((key: 'x', value: 1, isDeleted: true)));
-      await crdt.put('table', 'x', 1, true);
+      unawaited(
+          expectLater(crdt.watch('table'), emits((key: 'x', value: null))));
+      await crdt.delete('table', 'x');
     });
 
     test('Enforce table existence', () {
       expect(
         () => crdt.watch('not_table'),
-        throwsA('Unknown table: not_table'),
+        throwsA('Unknown collection: not_table'),
       );
     });
   });

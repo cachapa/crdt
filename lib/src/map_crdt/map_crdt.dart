@@ -8,9 +8,11 @@ import 'record.dart';
 /// datasets. It is incredibly inefficient.
 class MapCrdt extends MapCrdtBase {
   final Map<String, Map<String, Record>> _recordMaps;
-  final Map<String,
-          StreamController<({String key, dynamic value, bool isDeleted})>>
+  final Map<String, StreamController<({String key, dynamic value})>>
       _changeControllers;
+
+  @override
+  Iterable<String> get collections => _recordMaps.keys;
 
   @override
   bool get isEmpty => _recordMaps.values.fold(true, (p, e) => p && e.isEmpty);
@@ -18,36 +20,46 @@ class MapCrdt extends MapCrdtBase {
   @override
   bool get isNotEmpty => !isEmpty;
 
-  /// Instantiate a MapCrdt object with empty [tables].
-  MapCrdt(super.tables)
-      : _recordMaps = {for (final table in tables.toSet()) table: {}},
+  /// Instantiate a MapCrdt object with empty [collections].
+  MapCrdt(Iterable<String> collections)
+      : _recordMaps = {for (final collection in collections) collection: {}},
         _changeControllers = {
-          for (final table in tables.toSet())
-            table: StreamController.broadcast()
+          for (final collection in collections)
+            collection: StreamController.broadcast()
         },
-        assert(tables.isNotEmpty);
+        assert(collections.isNotEmpty),
+        assert(collections.length == collections.toSet().length);
 
   @override
-  Record? getRecord(String table, String key) => _recordMaps[table]![key];
+  Record? getRecord(String collection, String key) =>
+      _recordMaps[collection]![key];
 
   @override
-  Map<String, Record> getRecords(String table) => Map.of(_recordMaps[table]!);
+  Map<String, Record> getRecords(String collection) =>
+      Map.of(_recordMaps[collection]!);
 
   @override
   void putRecords(Map<String, Map<String, Record>> dataset) {
-    dataset.forEach((table, records) {
-      _recordMaps[table]!.addAll(records);
-      records.forEach((key, record) => _changeControllers[table]!
-          .add((key: key, value: record.value, isDeleted: record.isDeleted)));
-    });
+    for (final entry in dataset.entries) {
+      final collection = entry.key;
+      final records = entry.value;
+      // Store records in memory
+      _recordMaps[collection]!.addAll(records);
+      // Emit change events for each record
+      records.forEach((id, record) =>
+          _changeControllers[collection]!.add((key: id, value: record.data)));
+    }
   }
 
   @override
-  Stream<({String key, dynamic value, bool isDeleted})> watch(String table,
-      {String? key}) {
-    if (!tables.contains(table)) throw 'Unknown table: $table';
+  Stream<WatchEvent> watch(String collection, {String? key}) {
+    if (!collections.contains(collection)) {
+      throw 'Unknown collection: $collection';
+    }
     return key == null
-        ? _changeControllers[table]!.stream
-        : _changeControllers[table]!.stream.where((event) => event.key == key);
+        ? _changeControllers[collection]!.stream
+        : _changeControllers[collection]!
+            .stream
+            .where((event) => event.key == key);
   }
 }

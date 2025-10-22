@@ -15,12 +15,15 @@ class Hlc implements Comparable<Hlc> {
         assert(counter <= _maxCounter);
 
   /// Instantiates an Hlc at the beginning of time and space: January 1, 1970.
+  /// Use [generateNodeId()] for a random node id.
   Hlc.zero(String nodeId) : this(DateTime.utc(1970), 0, nodeId);
 
   /// Instantiates an Hlc at [dateTime] with logical counter zero.
+  /// Use [generateNodeId()] for a random node id.
   Hlc.fromDate(DateTime dateTime, String nodeId) : this(dateTime, 0, nodeId);
 
   /// Instantiates an Hlc using the wall clock.
+  /// Use [generateNodeId()] for a random node id.
   Hlc.now(String nodeId) : this.fromDate(DateTime.now(), nodeId);
 
   /// Parse an HLC string in the format `ISO8601 date-counter-node id`.

@@ -21,15 +21,17 @@ void main() {
     test('zero', () {
       final zero = Hlc.zero('abc');
       expect(
-          zero,
-          hlc.apply(
-              dateTime: DateTime.fromMillisecondsSinceEpoch(0), counter: 0));
+        zero,
+        hlc.apply(dateTime: DateTime.fromMillisecondsSinceEpoch(0), counter: 0),
+      );
       expect(zero.toString(), '1970-01-01T00:00:00.000Z-0000-abc');
     });
 
     test('from date', () {
       expect(
-          Hlc.fromDate(DateTime.parse(_isoTime), 'abc'), hlc.apply(counter: 0));
+        Hlc.fromDate(DateTime.parse(_isoTime), 'abc'),
+        hlc.apply(counter: 0),
+      );
     });
 
     test('parse', () {
@@ -161,14 +163,18 @@ void main() {
 
     test('Fail on clock drift', () {
       final hlc = Hlc(_dateTime.increment(60001), 0, 'abc');
-      expect(() => hlc.increment(wallTime: _dateTime),
-          throwsA(isA<ClockDriftException>()));
+      expect(
+        () => hlc.increment(wallTime: _dateTime),
+        throwsA(isA<ClockDriftException>()),
+      );
     });
 
     test('Fail on counter overflow', () {
       final hlc = Hlc(_dateTime, 0xFFFF, 'abc');
-      expect(() => hlc.increment(wallTime: _dateTime),
-          throwsA(isA<OverflowException>()));
+      expect(
+        () => hlc.increment(wallTime: _dateTime),
+        throwsA(isA<OverflowException>()),
+      );
     });
   });
 
@@ -211,14 +217,18 @@ void main() {
 
     test('Fail on node id', () {
       final remote = Hlc(_dateTime.increment(), 0, 'abc');
-      expect(() => canonical.merge(remote, wallTime: _dateTime),
-          throwsA(isA<DuplicateNodeException>()));
+      expect(
+        () => canonical.merge(remote, wallTime: _dateTime),
+        throwsA(isA<DuplicateNodeException>()),
+      );
     });
 
     test('Fail on clock drift', () {
       final remote = Hlc(_dateTime.increment(60001), 0x42, 'abcd');
-      expect(() => canonical.merge(remote, wallTime: _dateTime),
-          throwsA(isA<ClockDriftException>()));
+      expect(
+        () => canonical.merge(remote, wallTime: _dateTime),
+        throwsA(isA<ClockDriftException>()),
+      );
     });
   });
 }

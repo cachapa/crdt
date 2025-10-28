@@ -83,6 +83,9 @@ abstract mixin class Crdt {
   void onDatasetChanged(Iterable<String> affectedTables, Hlc hlc) {
     assert(hlc >= canonicalTime);
 
+    // Don't notify if there are no changes
+    if (affectedTables.isEmpty) return;
+
     // Bump canonical time if the new timestamp is higher
     if (hlc > canonicalTime) canonicalTime = hlc;
 

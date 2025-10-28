@@ -9,7 +9,7 @@ import 'record.dart';
 class MapCrdt extends MapCrdtBase {
   final Map<String, Map<String, Record>> _recordMaps;
   final Map<String, StreamController<({String key, dynamic value})>>
-      _changeControllers;
+  _changeControllers;
 
   @override
   Iterable<String> get collections => _recordMaps.keys;
@@ -22,13 +22,13 @@ class MapCrdt extends MapCrdtBase {
 
   /// Instantiate a MapCrdt object with empty [collections].
   MapCrdt(Iterable<String> collections)
-      : _recordMaps = {for (final collection in collections) collection: {}},
-        _changeControllers = {
-          for (final collection in collections)
-            collection: StreamController.broadcast()
-        },
-        assert(collections.isNotEmpty),
-        assert(collections.length == collections.toSet().length);
+    : _recordMaps = {for (final collection in collections) collection: {}},
+      _changeControllers = {
+        for (final collection in collections)
+          collection: StreamController.broadcast(),
+      },
+      assert(collections.isNotEmpty),
+      assert(collections.length == collections.toSet().length);
 
   @override
   Record? getRecord(String collection, String key) =>
@@ -46,8 +46,10 @@ class MapCrdt extends MapCrdtBase {
       // Store records in memory
       _recordMaps[collection]!.addAll(records);
       // Emit change events for each record
-      records.forEach((id, record) =>
-          _changeControllers[collection]!.add((key: id, value: record.data)));
+      records.forEach(
+        (id, record) =>
+            _changeControllers[collection]!.add((key: id, value: record.data)),
+      );
     }
   }
 
@@ -58,8 +60,8 @@ class MapCrdt extends MapCrdtBase {
     }
     return key == null
         ? _changeControllers[collection]!.stream
-        : _changeControllers[collection]!
-            .stream
-            .where((event) => event.key == key);
+        : _changeControllers[collection]!.stream.where(
+            (event) => event.key == key,
+          );
   }
 }

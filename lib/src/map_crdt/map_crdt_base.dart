@@ -56,19 +56,14 @@ abstract class MapCrdtBase extends Crdt {
   ///
   /// Use [putAll] if inserting multiple values to avoid incrementing the
   /// canonical time unnecessarily.
-  FutureOr<void> put(
-    String collection,
-    String id,
-    Object? data,
-  ) =>
-      putAll({
-        collection: {id: data}
-      });
+  FutureOr<void> put(String collection, String id, Object? data) => putAll({
+    collection: {id: data},
+  });
 
   /// Delete a record from this dataset
   FutureOr<void> delete(String collection, String id) => putAll({
-        collection: {id: null}
-      });
+    collection: {id: null},
+  });
 
   /// Set multiple records in this dataset.
   FutureOr<void> putAll(Map<String, Map<String, Object?>> dataset) async {
@@ -79,9 +74,12 @@ abstract class MapCrdtBase extends Crdt {
 
     // Generate records with incremented canonical time
     final hlc = canonicalTime.increment();
-    final records = dataset.map((collection, records) => MapEntry(collection,
-        records.map((id, data) => MapEntry(id, Record(data, hlc, hlc)))))
-      ..removeWhere((_, records) => records.isEmpty);
+    final records = dataset.map(
+      (collection, records) => MapEntry(
+        collection,
+        records.map((id, data) => MapEntry(id, Record(data, hlc, hlc))),
+      ),
+    )..removeWhere((_, records) => records.isEmpty);
 
     // Store records
     await putRecords(records);
@@ -114,25 +112,37 @@ abstract class MapCrdtBase extends Crdt {
     // Get records for the specified collections
     final changeset = {
       for (final collection in onlyCollections)
-        collection: getRecords(collection)
+        collection: getRecords(collection),
     };
 
     // Apply remaining filters
     for (final records in changeset.values) {
-      records.removeWhere((_, value) =>
-          (onlyNodeId != null && value.hlc.nodeId != onlyNodeId) ||
-          (exceptNodeId != null && value.hlc.nodeId == exceptNodeId) ||
-          (modifiedOn != null && value.modified != modifiedOn) ||
-          (modifiedAfter != null && value.modified <= modifiedAfter));
+      records.removeWhere(
+        (_, value) =>
+            (onlyNodeId != null && value.hlc.nodeId != onlyNodeId) ||
+            (exceptNodeId != null && value.hlc.nodeId == exceptNodeId) ||
+            (modifiedOn != null && value.modified != modifiedOn) ||
+            (modifiedAfter != null && value.modified <= modifiedAfter),
+      );
     }
 
     // Remove empty collection changesets
     changeset.removeWhere((_, records) => records.isEmpty);
 
-    return CrdtChangeset.parse(changeset.map((collection, records) => MapEntry(
-        collection,
-        records.entries.map(
-            (e) => {'id': e.key, 'hlc': e.value.hlc, 'data': e.value.data}))));
+    return CrdtChangeset.parse(
+      changeset.map(
+        (collection, records) => MapEntry(
+          collection,
+          records.entries.map(
+            (e) => {
+              'id': e.key,
+              'hlc': e.value.hlc,
+              'data': {e.key: e.value.data},
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -144,10 +154,12 @@ abstract class MapCrdtBase extends Crdt {
         // Flatten records into single iterable
         .fold(<Record>[], (p, e) => p..addAll(e))
         // Apply filters
-        .where((e) =>
-            (onlyNodeId == null && exceptNodeId == null) ||
-            (onlyNodeId != null && e.hlc.nodeId == onlyNodeId) ||
-            (exceptNodeId != null && e.hlc.nodeId != exceptNodeId))
+        .where(
+          (e) =>
+              (onlyNodeId == null && exceptNodeId == null) ||
+              (onlyNodeId != null && e.hlc.nodeId == onlyNodeId) ||
+              (exceptNodeId != null && e.hlc.nodeId != exceptNodeId),
+        )
         // Get only modified times
         .map((e) => e.modified);
 
@@ -157,8 +169,9 @@ abstract class MapCrdtBase extends Crdt {
 
   @override
   FutureOr<void> merge(CrdtChangeset changeset) async {
-    final unknownTables =
-        changeset.collections.toSet().difference(collections.toSet());
+    final unknownTables = changeset.collections.toSet().difference(
+      collections.toSet(),
+    );
     if (unknownTables.isNotEmpty) {
       throw 'Unknown table(s): ${unknownTables.join(', ')}';
     }
@@ -176,7 +189,7 @@ abstract class MapCrdtBase extends Crdt {
         if (existing == null || record.hlc > existing.hlc) {
           newRecords[collection] ??= {};
           newRecords[collection]![record.id] = Record(
-            record.data,
+            record.data?[record.id],
             record.hlc,
             hlc,
           );

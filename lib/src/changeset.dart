@@ -35,15 +35,18 @@ class CrdtChangeset {
       _collectionMap[collection] = records;
 
   CrdtChangeset.parse(Map<String, dynamic> message)
-      : _collectionMap = message.map((collection, records) => MapEntry(
-            collection,
-            (records as Iterable<Map<String, Object?>>)
-                .map(CrdtRecord.parse)
-                .toList()));
+    : _collectionMap = message.map(
+        (collection, records) => MapEntry(
+          collection,
+          (records as Iterable<Map<String, Object?>>)
+              .map(CrdtRecord.parse)
+              .toList(),
+        ),
+      );
 
   void forEach(
-          void Function(String collection, List<CrdtRecord> records) action) =>
-      _collectionMap.forEach(action);
+    void Function(String collection, List<CrdtRecord> records) action,
+  ) => _collectionMap.forEach(action);
 
   @override
   String toString() => '${toJson()}';
@@ -54,24 +57,21 @@ class CrdtChangeset {
 class CrdtRecord {
   final String id;
   final Hlc hlc;
-  final Object? data;
+  final Map<String, Object?>? data;
 
   bool get isDeleted => data == null;
 
   CrdtRecord(this.id, this.hlc, this.data);
 
   CrdtRecord.parse(Map<String, dynamic> map)
-      : this(
-            map['id'],
-            map['hlc'] is String ? Hlc.parse(map['hlc']) : map['hlc'],
-            map['data']);
+    : this(
+        map['id'],
+        map['hlc'] is String ? Hlc.parse(map['hlc']) : map['hlc'],
+        map['data'],
+      );
 
   @override
   String toString() => '${toJson()}';
 
-  Map<String, Object?> toJson() => {
-        'id': id,
-        'hlc': hlc,
-        'data': data,
-      };
+  Map<String, Object?> toJson() => {'id': id, 'hlc': hlc, 'data': data};
 }

@@ -11,8 +11,8 @@ class Hlc implements Comparable<Hlc> {
   final String nodeId;
 
   Hlc(DateTime dateTime, this.counter, this.nodeId)
-      : dateTime = dateTime.toUtc(),
-        assert(counter <= _maxCounter);
+    : dateTime = dateTime.toUtc(),
+      assert(counter <= _maxCounter);
 
   /// Instantiates an Hlc at the beginning of time and space: January 1, 1970.
   /// Use [generateNodeId()] for a random node id.
@@ -31,17 +31,20 @@ class Hlc implements Comparable<Hlc> {
     final counterDash = timestamp.indexOf('-', timestamp.lastIndexOf(':'));
     final nodeIdDash = timestamp.indexOf('-', counterDash + 1);
     final dateTime = DateTime.parse(timestamp.substring(0, counterDash));
-    final counter =
-        int.parse(timestamp.substring(counterDash + 1, nodeIdDash), radix: 16);
+    final counter = int.parse(
+      timestamp.substring(counterDash + 1, nodeIdDash),
+      radix: 16,
+    );
     final nodeId = timestamp.substring(nodeIdDash + 1);
     return Hlc(dateTime, counter, nodeId);
   }
 
   /// Create a copy of this object applying the optional properties.
   Hlc apply({DateTime? dateTime, int? counter, String? nodeId}) => Hlc(
-      dateTime ?? this.dateTime,
-      counter ?? this.counter,
-      nodeId ?? this.nodeId);
+    dateTime ?? this.dateTime,
+    counter ?? this.counter,
+    nodeId ?? this.nodeId,
+  );
 
   /// Increments the current timestamp for transmission to another system.
   /// The local wall time will be used if [wallTime] isn't supplied.
@@ -76,7 +79,9 @@ class Hlc implements Comparable<Hlc> {
     // No need to do any more work if our date + counter is same or higher
     if (remote.dateTime.isBefore(dateTime) ||
         (remote.dateTime.isAtSameMomentAs(dateTime) &&
-            remote.counter <= counter)) return this;
+            remote.counter <= counter)) {
+      return this;
+    }
 
     // Assert the node id
     if (nodeId == remote.nodeId) {
@@ -94,7 +99,8 @@ class Hlc implements Comparable<Hlc> {
   String toJson() => toString();
 
   @override
-  String toString() => '${dateTime.toIso8601String()}'
+  String toString() =>
+      '${dateTime.toIso8601String()}'
       '-${counter.toRadixString(16).toUpperCase().padLeft(4, '0')}'
       '-$nodeId';
 
@@ -104,19 +110,19 @@ class Hlc implements Comparable<Hlc> {
   @override
   bool operator ==(other) => other is Hlc && compareTo(other) == 0;
 
-  bool operator <(other) => other is Hlc && compareTo(other) < 0;
+  bool operator <(Hlc other) => compareTo(other) < 0;
 
-  bool operator <=(other) => this < other || this == other;
+  bool operator <=(Hlc other) => this < other || this == other;
 
-  bool operator >(other) => other is Hlc && compareTo(other) > 0;
+  bool operator >(Hlc other) => compareTo(other) > 0;
 
-  bool operator >=(other) => this > other || this == other;
+  bool operator >=(Hlc other) => this > other || this == other;
 
   @override
   int compareTo(Hlc other) => dateTime.isAtSameMomentAs(other.dateTime)
       ? counter == other.counter
-          ? nodeId.compareTo(other.nodeId)
-          : counter - other.counter
+            ? nodeId.compareTo(other.nodeId)
+            : counter - other.counter
       : dateTime.compareTo(other.dateTime);
 }
 
@@ -124,7 +130,7 @@ class ClockDriftException implements Exception {
   final Duration drift;
 
   ClockDriftException(DateTime dateTime, DateTime wallTime)
-      : drift = dateTime.difference(wallTime);
+    : drift = dateTime.difference(wallTime);
 
   @override
   String toString() => 'Clock drift of $drift ms exceeds maximum ($_maxDrift)';

@@ -38,11 +38,12 @@ class CrdtChangeset {
     : _collectionMap = message.map(
         (collection, records) => MapEntry(
           collection,
-          (records as Iterable<Map<String, Object?>>)
+          (records as Iterable)
+              .cast<Map<String, Object?>>()
               .map(CrdtRecord.parse)
               .toList(),
         ),
-      );
+      )..removeWhere((_, records) => records.isEmpty);
 
   void forEach(
     void Function(String collection, List<CrdtRecord> records) action,

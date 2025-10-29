@@ -29,4 +29,3 @@ jobs:
       - uses: dart-lang/setup-dart@v1
       - run: dart pub get
       - run: dart run test
-

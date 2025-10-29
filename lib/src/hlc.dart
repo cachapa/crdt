@@ -39,6 +39,9 @@ class Hlc implements Comparable<Hlc> {
     return Hlc(dateTime, counter, nodeId);
   }
 
+  static Hlc? maybeParse(String? timestamp) =>
+      timestamp == null ? null : Hlc.parse(timestamp);
+
   /// Create a copy of this object applying the optional properties.
   Hlc apply({DateTime? dateTime, int? counter, String? nodeId}) => Hlc(
     dateTime ?? this.dateTime,
@@ -154,6 +157,8 @@ class DuplicateNodeException implements Exception {
   String toString() => 'Duplicate node: $nodeId';
 }
 
+// TODO Remove this in Q2 2027
 extension StringHlcX on String {
+  @Deprecated('Use Hlc.maybeParse() instead.')
   Hlc get toHlc => Hlc.parse(this);
 }

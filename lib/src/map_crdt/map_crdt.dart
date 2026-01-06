@@ -8,7 +8,10 @@ import 'record.dart';
 /// datasets. It is incredibly inefficient.
 class MapCrdt extends MapCrdtBase {
   final Map<String, Map<String, Record>> _recordMaps;
-  final Map<String, StreamController<({String key, dynamic value})>>
+  final Map<
+    String,
+    StreamController<({String key, Map<String, Object?>? value})>
+  >
   _changeControllers;
 
   @override
@@ -21,7 +24,10 @@ class MapCrdt extends MapCrdtBase {
   bool get isNotEmpty => !isEmpty;
 
   /// Instantiate a MapCrdt object with empty [collections].
-  MapCrdt(Iterable<String> collections)
+  ///
+  /// Pass [nodeId] to use a custom node id, otherwise one will be generated.
+  /// Make sure to use a reliable node id generator such as UUIDv4 in prod.
+  MapCrdt(super.nodeId, Iterable<String> collections)
     : _recordMaps = {for (final collection in collections) collection: {}},
       _changeControllers = {
         for (final collection in collections)

@@ -5,9 +5,8 @@ import 'package:meta/meta.dart';
 
 import '../changeset.dart';
 import '../crdt.dart';
-import '../hlc.dart';
 
-typedef WatchEvent = ({String key, dynamic value});
+typedef WatchEvent = ({String key, Map<String, Object?>? value});
 
 /// Base class for a CRDT backed by a flat map.
 /// See [MapCrdt] for a simple implementation. Look for [HiveCrdt] for an
@@ -15,6 +14,11 @@ typedef WatchEvent = ({String key, dynamic value});
 ///
 /// Check out [SqlCrdt] and descendants for SQL-based solutions.
 abstract class MapCrdtBase extends Crdt {
+  late int _canonicalTime;
+
+  @override
+  int get canonicalTime => _canonicalTime;
+
   // The collections monitored by this CRDT.
   Iterable<String> get collections;
 
@@ -24,8 +28,8 @@ abstract class MapCrdtBase extends Crdt {
   /// Whether this dataset has at least one record.
   bool get isNotEmpty;
 
-  MapCrdtBase() {
-    canonicalTime = getLastModified() ?? Hlc.zero(generateNodeId());
+  MapCrdtBase(super.nodeId) {
+    _canonicalTime = getLastModified() ?? 0;
   }
 
   @protected
@@ -38,14 +42,13 @@ abstract class MapCrdtBase extends Crdt {
   FutureOr<void> putRecords(Map<String, Map<String, Record>> dataset);
 
   /// Get a value from the local dataset.
-  Object? get(String collection, String key) {
+  Map<String, Object?>? get(String collection, String key) {
     assert(collections.contains(collection));
-    final value = getRecord(collection, key)?.data;
-    return value;
+    return getRecord(collection, key)?.data;
   }
 
   /// Get a table map from the local dataset.
-  Map<String, Object?> getMap(String collection) {
+  Map<String, Map<String, Object?>?> getMap(String collection) {
     assert(collections.contains(collection));
     return (getRecords(collection)
           ..removeWhere((_, record) => record.isDeleted))
@@ -56,7 +59,11 @@ abstract class MapCrdtBase extends Crdt {
   ///
   /// Use [putAll] if inserting multiple values to avoid incrementing the
   /// canonical time unnecessarily.
-  FutureOr<void> put(String collection, String id, Object? data) => putAll({
+  FutureOr<void> put(
+    String collection,
+    String id,
+    Map<String, Object?>? data,
+  ) => putAll({
     collection: {id: data},
   });
 
@@ -66,24 +73,29 @@ abstract class MapCrdtBase extends Crdt {
   });
 
   /// Set multiple records in this dataset.
-  FutureOr<void> putAll(Map<String, Map<String, Object?>> dataset) async {
+  FutureOr<void> putAll(
+    Map<String, Map<String, Map<String, Object?>?>> dataset,
+  ) async {
     final unknownTables = dataset.keys.toSet().difference(collections.toSet());
     if (unknownTables.isNotEmpty) {
       throw 'Unknown table(s): ${unknownTables.join(', ')}';
     }
 
     // Generate records with incremented canonical time
-    final hlc = canonicalTime.increment();
+    final hlc = canonicalHlc.increment();
     final records = dataset.map(
       (collection, records) => MapEntry(
         collection,
-        records.map((id, data) => MapEntry(id, Record(data, hlc, hlc))),
+        records.map(
+          (id, data) => MapEntry(id, Record(data, hlc, hlc.logicalTime)),
+        ),
       ),
     )..removeWhere((_, records) => records.isEmpty);
 
     // Store records
     await putRecords(records);
-    onDatasetChanged(records.keys, hlc);
+    _canonicalTime = hlc.logicalTime;
+    onDatasetChanged(records.keys, _canonicalTime);
   }
 
   /// Returns a stream of changes.
@@ -93,27 +105,40 @@ abstract class MapCrdtBase extends Crdt {
 
   @override
   CrdtChangeset getChangeset({
-    Iterable<String>? onlyCollections,
+    Map<String, Map<String, Object?>?>? collectionFilter,
     String? onlyNodeId,
     String? exceptNodeId,
-    Hlc? modifiedOn,
-    Hlc? modifiedAfter,
+    int? modifiedOn,
+    int? modifiedAfter,
   }) {
+    assert(
+      collectionFilter == null ||
+          collectionFilter.keys.toSet().difference(collections.toSet()).isEmpty,
+      'Unrecognized table(s): ${collectionFilter.keys.toSet().difference(collections.toSet()).join(', ')}.',
+    );
     assert(onlyNodeId == null || exceptNodeId == null);
     assert(modifiedOn == null || modifiedAfter == null);
 
-    onlyCollections ??= collections;
-    assert(onlyCollections.toSet().difference(collections.toSet()).isEmpty);
-
-    // Modified times use the local node id
-    modifiedOn = modifiedOn?.apply(nodeId: nodeId);
-    modifiedAfter = modifiedAfter?.apply(nodeId: nodeId);
-
     // Get records for the specified collections
     final changeset = {
-      for (final collection in onlyCollections)
+      for (final collection in collectionFilter?.keys ?? collections)
         collection: getRecords(collection),
     };
+
+    // Apply collection filter
+    for (final entry
+        in (collectionFilter?.entries.where((e) => (e.value != null))) ??
+            <MapEntry<String, Map<String, Object?>>>[]) {
+      final collection = entry.key;
+      final filters = entry.value!;
+      for (final filter in filters.entries) {
+        changeset[collection]!.removeWhere(
+          (key, record) =>
+              !record.data!.containsKey(filter.key) ||
+              !(record.data![filter.key] != filter.value),
+        );
+      }
+    }
 
     // Apply remaining filters
     for (final records in changeset.values) {
@@ -134,11 +159,7 @@ abstract class MapCrdtBase extends Crdt {
         (collection, records) => MapEntry(
           collection,
           records.entries.map(
-            (e) => {
-              'id': e.key,
-              'hlc': e.value.hlc,
-              'data': {e.key: e.value.data},
-            },
+            (e) => {'id': e.key, 'hlc': e.value.hlc, 'data': e.value.data},
           ),
         ),
       ),
@@ -146,7 +167,7 @@ abstract class MapCrdtBase extends Crdt {
   }
 
   @override
-  Hlc? getLastModified({String? onlyNodeId, String? exceptNodeId}) {
+  int? getLastModified({String? onlyNodeId, String? exceptNodeId}) {
     assert(onlyNodeId == null || exceptNodeId == null);
 
     final hlcs = collections
@@ -179,7 +200,7 @@ abstract class MapCrdtBase extends Crdt {
     if (changeset.recordCount == 0) return;
 
     // Validate changeset and get new canonical time
-    final hlc = validateChangeset(changeset);
+    final highestTime = validateChangeset(changeset);
 
     final newRecords = <String, Map<String, Record>>{};
     for (final entry in changeset.entries) {
@@ -189,9 +210,9 @@ abstract class MapCrdtBase extends Crdt {
         if (existing == null || record.hlc > existing.hlc) {
           newRecords[collection] ??= {};
           newRecords[collection]![record.id] = Record(
-            record.data?[record.id],
+            record.data,
             record.hlc,
-            hlc,
+            highestTime,
           );
         }
       }
@@ -201,6 +222,7 @@ abstract class MapCrdtBase extends Crdt {
 
     // Write new records
     await putRecords(newRecords);
-    onDatasetChanged(newRecords.keys, hlc);
+    _canonicalTime = highestTime;
+    onDatasetChanged(newRecords.keys, highestTime);
   }
 }

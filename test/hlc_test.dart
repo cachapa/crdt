@@ -1,7 +1,7 @@
 import 'package:crdt/src/hlc.dart';
 import 'package:test/test.dart';
 
-const _isoTime = '2001-09-09T01:46:40.000Z';
+const _isoTime = '2001-09-09T01:46:40.123Z';
 final _dateTime = DateTime.parse(_isoTime);
 
 void main() {
@@ -14,8 +14,15 @@ void main() {
       expect(hlc.nodeId, 'abc');
     });
 
-    test('default with microseconds', () {
-      expect(Hlc(DateTime.parse('2001-09-09T01:46:40.000Z'), 0x42, 'abc'), hlc);
+    test('default with milliseconds', () {
+      expect(Hlc(DateTime.parse('2001-09-09T01:46:40.123Z'), 0x42, 'abc'), hlc);
+    });
+
+    test('Clamp precision to milliseconds', () {
+      expect(
+        Hlc(DateTime.parse('2001-09-09T01:46:40.123123Z'), 0x42, 'abc'),
+        hlc,
+      );
     });
 
     test('zero', () {
@@ -36,6 +43,41 @@ void main() {
 
     test('parse', () {
       expect(Hlc.parse('$_isoTime-0042-abc'), hlc);
+    });
+
+    test('From timestamp', () {
+      // Zero is actually zero
+      final zero = Hlc.fromLogicalTime(0, 'abc');
+      expect(zero.dateTime, DateTime.utc(1970));
+      expect(zero.dateTime, DateTime.fromMillisecondsSinceEpoch(0).toUtc());
+      expect(zero.counter, 0);
+      // No loss of millisecond precision
+      final now = Hlc.now('abc');
+      expect(Hlc.fromLogicalTime(now.logicalTime, 'abc'), now);
+      // Counter is preserved
+      final counter = Hlc.fromLogicalTime(
+        now.apply(counter: 123).logicalTime,
+        'abc',
+      );
+      expect(counter.counter, 123);
+    });
+
+    test('To timestamp', () {
+      // Zero is actually zero
+      expect(Hlc.zero('abc').logicalTime, 0);
+      expect(Hlc.parse('1970-01-01T00:00:00.000Z-0000-abc').logicalTime, 0);
+      // Node id is irrelevant
+      expect(Hlc.zero('abc').logicalTime, Hlc.zero('xyz').logicalTime);
+      // Random date
+      expect(
+        Hlc(DateTime(2025, 04, 25), 123, 'abc').logicalTime,
+        114395185152000123,
+      );
+      // Counter increases the int value monotonically
+      expect(
+        Hlc(DateTime(2025), 1, 'abc').logicalTime,
+        Hlc(DateTime(2025), 0, 'abc').logicalTime + 1,
+      );
     });
   });
 

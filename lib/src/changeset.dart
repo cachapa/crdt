@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'hlc.dart';
 
 // Sample changeset
@@ -16,63 +18,77 @@ import 'hlc.dart';
 //   ]
 // };
 
-class CrdtChangeset {
-  final Map<String, List<CrdtRecord>> _collectionMap;
-
+class CrdtChangeset extends _MapBase<String, Iterable<CrdtRecord>> {
   /// Convenience method to get total number of records in a changeset
-  int get recordCount =>
-      _collectionMap.values.fold<int>(0, (prev, e) => prev + e.length);
+  int get recordCount => values.fold<int>(0, (prev, e) => prev + e.length);
 
-  Iterable<MapEntry<String, List<CrdtRecord>>> get entries =>
-      _collectionMap.entries;
+  Iterable<String> get collections => keys;
 
-  Iterable<String> get collections => _collectionMap.keys;
-
-  List<CrdtRecord>? operator [](String collection) =>
-      _collectionMap[collection];
-
-  void setRecords(String collection, List<CrdtRecord> records) =>
-      _collectionMap[collection] = records;
-
-  CrdtChangeset.parse(Map<String, dynamic> message)
-    : _collectionMap = message.map(
-        (collection, records) => MapEntry(
-          collection,
-          (records as Iterable)
-              .cast<Map<String, Object?>>()
-              .map(CrdtRecord.parse)
-              .toList(),
-        ),
-      )..removeWhere((_, records) => records.isEmpty);
-
-  void forEach(
-    void Function(String collection, List<CrdtRecord> records) action,
-  ) => _collectionMap.forEach(action);
-
-  @override
-  String toString() => '${toJson()}';
-
-  Map<String, Object?> toJson() => Map.unmodifiable(_collectionMap);
-}
-
-class CrdtRecord {
-  final String id;
-  final Hlc hlc;
-  final Map<String, Object?>? data;
-
-  bool get isDeleted => data == null;
-
-  CrdtRecord(this.id, this.hlc, this.data);
-
-  CrdtRecord.parse(Map<String, dynamic> map)
-    : this(
-        map['id'],
-        map['hlc'] is String ? Hlc.parse(map['hlc']) : map['hlc'],
-        map['data'],
+  static CrdtChangeset fromMap(Map<String, dynamic> map) =>
+      CrdtChangeset()..addAll(
+        map.map(
+          (collection, records) => MapEntry(
+            collection,
+            (records as Iterable).cast<Map<String, Object?>>().map(
+              CrdtRecord.fromMap,
+            ),
+          ),
+        )..removeWhere((_, records) => records.isEmpty),
       );
 
-  @override
-  String toString() => '${toJson()}';
+  // CrdtChangeset.parse(Map<String, dynamic> message)
+  //   : _collectionMap = message.map(
+  //       (collection, records) => MapEntry(
+  //         collection,
+  //         (records as Iterable).cast<Map<String, Object?>>().map(
+  //           CrdtRecord.parse,
+  //         ),
+  //       ),
+  //     )..removeWhere((_, records) => records.isEmpty);
 
-  Map<String, Object?> toJson() => {'id': id, 'hlc': hlc, 'data': data};
+  // void forEach(
+  //   void Function(String collection, Iterable<CrdtRecord> records) action,
+  // ) => _collectionMap.forEach(action);
+
+  @override
+  String toString() =>
+      '{\n${entries.map((e) => ' ${e.key}:\n${e.value.map((v) => '  $v').join('\n')}').join('\n')}\n}';
+
+  // Map<String, Object?> toJson() => jsonEncode(this)_collectionMap.map(
+  //   (collection, records) =>
+  //       MapEntry(collection, records.map((r) => r.toJson())),
+  // );
+}
+
+class CrdtRecord extends _MapBase<String, Object?> {
+  static const _hlcKey = 'crdt_hlc';
+  static const _isDeletedKey = 'crdt_is_deleted';
+
+  Hlc get hlc => this[_hlcKey] is String
+      ? Hlc.parse(this[_hlcKey] as String)
+      : this[_hlcKey] as Hlc;
+  bool get isDeleted => this[_isDeletedKey]! as bool;
+
+  static CrdtRecord fromMap(Map<String, dynamic> map) => CrdtRecord()
+    ..addEntries(map.entries.where((e) => !e.key.startsWith('crdt_')))
+    ..['crdt'] = {'hlc': map[_hlcKey], 'is_deleted': map[_isDeletedKey]};
+}
+
+class _MapBase<K, V> extends MapBase<K, V> {
+  final _map = <K, V>{};
+
+  @override
+  V? operator [](Object? key) => _map[key];
+
+  @override
+  void operator []=(K key, V value) => _map[key] = value;
+
+  @override
+  void clear() => _map.clear();
+
+  @override
+  Iterable<K> get keys => _map.keys;
+
+  @override
+  V? remove(Object? key) => _map.remove(key);
 }

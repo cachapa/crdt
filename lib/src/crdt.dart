@@ -1,65 +1,69 @@
 import 'dart:async';
 
-import 'package:meta/meta.dart';
-import 'package:uuid/uuid.dart';
+import 'package:meta/meta.dart' show protected;
 
 import 'changeset.dart';
 import 'hlc.dart';
 
-String generateNodeId() => Uuid().v4();
+abstract class Crdt {
+  /// Get this CRDT's node id
+  final String nodeId;
 
-abstract mixin class Crdt {
-  late Hlc _canonicalTime;
+  /// Represents the latest logical timestamp seen in the stored data.
+  /// See [Hlc.toTimestamp].
+  int get canonicalTime;
 
-  /// Represents the latest logical time seen in the stored data.
-  Hlc get canonicalTime => _canonicalTime;
-
-  /// Updates the canonical time.
-  /// Should *never* be called from outside implementations.
-  @protected
-  set canonicalTime(Hlc value) => _canonicalTime = value;
+  /// Helper method to generate an HLC from [canonicalTime].
+  Hlc get canonicalHlc => Hlc.fromLogicalTime(canonicalTime, nodeId);
 
   final _tableChangesController =
-      StreamController<({Hlc hlc, Iterable<String> tables})>.broadcast();
-
-  /// Get this CRDT's node id
-  String get nodeId => canonicalTime.nodeId;
+      StreamController<({int timestamp, Iterable<String> tables})>.broadcast();
 
   /// Emits a list of the tables affected by changes in the database and the
   /// timestamp at which they happened.
   /// Useful for guaranteeing atomic merges across multiple tables.
-  Stream<({Hlc hlc, Iterable<String> tables})> get onTablesChanged =>
+  Stream<({int timestamp, Iterable<String> tables})> get onTablesChanged =>
       _tableChangesController.stream;
+
+  Crdt(this.nodeId);
 
   /// Returns the last modified timestamp, optionally filtering for or against a
   /// specific node id.
   /// Useful to get "modified since" timestamps for synchronization.
   /// Returns null if no timestamp is found.
-  FutureOr<Hlc?> getLastModified({String? onlyNodeId, String? exceptNodeId});
+  FutureOr<int?> getLastModified({String? onlyNodeId, String? exceptNodeId});
 
   /// Get a [Changeset] using the provided [changesetQueries].
   ///
-  /// Set the filtering parameters to to generate subsets:
-  /// [onlyCollections] only records from the specified tables. Leave empty for all.
+  /// Set [collectionFilter] to [null] disable filtering.
+  /// Set map values to [null] to filter only by collection name.
+  ///
   /// [onlyNodeId] only records set by the specified node.
-  /// [exceptNodeId] only records not set by the specified node.
-  /// [modifiedOn] records whose modified at this exact [Hlc].
-  /// [modifiedAfter] records modified after the specified [Hlc].
+  /// Useful for clients to send local changes only.
+  ///
+  /// [exceptNodeId] all records not set by the specified node.
+  /// Useful for servers to avoid sending clients their own changes.
+  ///
+  /// [modifiedOn] records modified at this exact [Hlc] timestamp.
+  /// Used for sending atomic real-time updates on data changes.
+  ///
+  /// [modifiedAfter] records modified after the specified [Hlc] timestamp.
+  /// Useful for syncing delta updates.
   FutureOr<CrdtChangeset> getChangeset({
-    Iterable<String>? onlyCollections,
     String? onlyNodeId,
     String? exceptNodeId,
-    Hlc? modifiedOn,
-    Hlc? modifiedAfter,
+    int? modifiedOn,
+    int? modifiedAfter,
   });
 
   /// Checks if changeset is valid. This method is intended for implementations
   /// and shouldn't generally be called from outside.
   ///
-  /// Returns the highest hlc in the changeset or the canonical time, if higher.
+  /// Returns the highest logical time in the changeset or the canonical time,
+  /// if higher.
   @protected
-  Hlc validateChangeset(CrdtChangeset changeset) {
-    var hlc = canonicalTime;
+  int validateChangeset(CrdtChangeset changeset) {
+    var hlc = canonicalHlc;
     // Iterate through all the incoming timestamps to:
     // - Check for invalid entries (throws exception)
     // - Update local canonical time if needed
@@ -72,24 +76,21 @@ abstract mixin class Crdt {
         }
       }
     });
-    return hlc;
+    return hlc.logicalTime;
   }
 
   /// Merge [changeset] with the local dataset.
   FutureOr<void> merge(CrdtChangeset changeset);
 
-  /// Notifies listeners and updates the canonical time.
+  /// Notifies listeners
   @protected
-  void onDatasetChanged(Iterable<String> affectedTables, Hlc hlc) {
-    assert(hlc >= canonicalTime);
+  void onDatasetChanged(Iterable<String> affectedTables, int timestamp) {
+    assert(timestamp >= canonicalTime);
 
     // Don't notify if there are no changes
     if (affectedTables.isEmpty) return;
 
-    // Bump canonical time if the new timestamp is higher
-    if (hlc > canonicalTime) canonicalTime = hlc;
-
-    _tableChangesController.add((hlc: hlc, tables: affectedTables));
+    _tableChangesController.add((timestamp: timestamp, tables: affectedTables));
   }
 }
 

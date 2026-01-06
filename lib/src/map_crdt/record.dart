@@ -2,9 +2,9 @@ import '../hlc.dart';
 
 /// Stores a value associated with a given HLC
 class Record {
-  final Object? data;
+  final Map<String, Object?>? data;
   final Hlc hlc;
-  final Hlc modified;
+  final int modified;
 
   bool get isDeleted => data == null;
 

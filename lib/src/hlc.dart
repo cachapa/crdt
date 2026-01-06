@@ -1,3 +1,4 @@
+const _timestampShift = 16;
 const _maxCounter = 0xFFFF;
 const _maxDrift = Duration(minutes: 1);
 
@@ -10,8 +11,20 @@ class Hlc implements Comparable<Hlc> {
   final int counter;
   final String nodeId;
 
+  /// Returns this timestamp's [dateTime] and [counter] components as a single
+  /// 64-bit integer.
+  ///
+  /// Convenient when using HLCs to record local modified timestamps, where the
+  /// node id isn't relevant and int comparisons are more efficient.
+  int get logicalTime =>
+      (dateTime.millisecondsSinceEpoch << _timestampShift) + counter;
+
   Hlc(DateTime dateTime, this.counter, this.nodeId)
-    : dateTime = dateTime.toUtc(),
+    : // Ensure millisecond precision and UTC
+      dateTime = DateTime.fromMillisecondsSinceEpoch(
+        dateTime.millisecondsSinceEpoch,
+        isUtc: true,
+      ),
       assert(counter <= _maxCounter);
 
   /// Instantiates an Hlc at the beginning of time and space: January 1, 1970.
@@ -25,6 +38,15 @@ class Hlc implements Comparable<Hlc> {
   /// Instantiates an Hlc using the wall clock.
   /// Use [generateNodeId()] for a random node id.
   Hlc.now(String nodeId) : this.fromDate(DateTime.now(), nodeId);
+
+  /// Instantiates an Hlc from a [logicalTime].
+  /// Use [generateNodeId()] for a random node id.
+  Hlc.fromLogicalTime(int logicalTime, String nodeId)
+    : this(
+        DateTime.fromMillisecondsSinceEpoch(logicalTime >> _timestampShift),
+        logicalTime & _maxCounter,
+        nodeId,
+      );
 
   /// Parse an HLC string in the format `ISO8601 date-counter-node id`.
   factory Hlc.parse(String timestamp) {
@@ -108,7 +130,7 @@ class Hlc implements Comparable<Hlc> {
       '-$nodeId';
 
   @override
-  int get hashCode => toString().hashCode;
+  int get hashCode => Object.hash(dateTime, counter, nodeId);
 
   @override
   bool operator ==(other) => other is Hlc && compareTo(other) == 0;
@@ -155,10 +177,4 @@ class DuplicateNodeException implements Exception {
 
   @override
   String toString() => 'Duplicate node: $nodeId';
-}
-
-// TODO Remove this in Q2 2027
-extension StringHlcX on String {
-  @Deprecated('Use Hlc.maybeParse() instead.')
-  Hlc get toHlc => Hlc.parse(this);
 }

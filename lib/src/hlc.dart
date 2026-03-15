@@ -21,10 +21,7 @@ class Hlc implements Comparable<Hlc> {
 
   Hlc(DateTime dateTime, this.counter, this.nodeId)
     : // Ensure millisecond precision and UTC
-      dateTime = DateTime.fromMillisecondsSinceEpoch(
-        dateTime.millisecondsSinceEpoch,
-        isUtc: true,
-      ),
+      dateTime = dateTime.normalize,
       assert(counter <= _maxCounter);
 
   /// Instantiates an Hlc at the beginning of time and space: January 1, 1970.
@@ -75,7 +72,7 @@ class Hlc implements Comparable<Hlc> {
   /// The local wall time will be used if [wallTime] isn't supplied.
   Hlc increment({DateTime? wallTime}) {
     // Retrieve the local wall time if millis is null
-    wallTime = (wallTime ?? DateTime.now()).toUtc();
+    wallTime = (wallTime ?? DateTime.now()).normalize;
 
     // Calculate the next time and counter
     // * ensure that the logical time never goes backward
@@ -98,9 +95,6 @@ class Hlc implements Comparable<Hlc> {
   /// timestamp to preserve monotonicity.
   /// Local wall time will be used if [wallTime] isn't supplied.
   Hlc merge(Hlc remote, {DateTime? wallTime}) {
-    // Retrieve the local wall time if millis is null
-    wallTime = (wallTime ?? DateTime.now()).toUtc();
-
     // No need to do any more work if our date + counter is same or higher
     if (remote.dateTime.isBefore(dateTime) ||
         (remote.dateTime.isAtSameMomentAs(dateTime) &&
@@ -113,6 +107,7 @@ class Hlc implements Comparable<Hlc> {
       throw DuplicateNodeException(nodeId);
     }
     // Assert the remote clock drift
+    wallTime = (wallTime ?? DateTime.now()).normalize;
     if (remote.dateTime.difference(wallTime) > _maxDrift) {
       throw ClockDriftException(remote.dateTime, wallTime);
     }
@@ -177,4 +172,10 @@ class DuplicateNodeException implements Exception {
 
   @override
   String toString() => 'Duplicate node: $nodeId';
+}
+
+extension on DateTime {
+  // Clamps to millisecond precision and ensures it's UTC
+  DateTime get normalize =>
+      DateTime.fromMillisecondsSinceEpoch(millisecondsSinceEpoch, isUtc: true);
 }

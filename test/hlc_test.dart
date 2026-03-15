@@ -175,32 +175,42 @@ void main() {
     });
   });
 
-  group('Send', () {
+  group('Increment', () {
+    test('Ensure ms precision and UTC', () {
+      final hlc = Hlc(
+        _dateTime,
+        0,
+        'abc',
+      ).increment(wallTime: DateTime.parse('2001-09-09T01:46:40.123123Z'));
+      expect(hlc.counter, 1);
+      expect(hlc.dateTime.isUtc, isTrue);
+    });
+
     test('Higher canonical time', () {
       final hlc = Hlc(_dateTime.increment(), 0x42, 'abc');
-      final sendHlc = hlc.increment(wallTime: _dateTime);
-      expect(sendHlc, isNot(hlc));
-      expect(sendHlc.dateTime, hlc.dateTime);
-      expect(sendHlc.counter, 0x43);
-      expect(sendHlc.nodeId, hlc.nodeId);
+      final incrementHlc = hlc.increment(wallTime: _dateTime);
+      expect(incrementHlc, isNot(hlc));
+      expect(incrementHlc.dateTime, hlc.dateTime);
+      expect(incrementHlc.counter, 0x43);
+      expect(incrementHlc.nodeId, hlc.nodeId);
     });
 
     test('Equal canonical time', () {
       final hlc = Hlc(_dateTime, 0x42, 'abc');
-      final sendHlc = hlc.increment(wallTime: _dateTime);
-      expect(sendHlc, isNot(hlc));
-      expect(sendHlc.dateTime, _dateTime);
-      expect(sendHlc.counter, 0x43);
-      expect(sendHlc.nodeId, hlc.nodeId);
+      final incrementHlc = hlc.increment(wallTime: _dateTime);
+      expect(incrementHlc, isNot(hlc));
+      expect(incrementHlc.dateTime, _dateTime);
+      expect(incrementHlc.counter, 0x43);
+      expect(incrementHlc.nodeId, hlc.nodeId);
     });
 
     test('Lower canonical time', () {
       final hlc = Hlc(_dateTime.decrement(), 0x42, 'abc');
-      final sendHlc = hlc.increment(wallTime: _dateTime);
-      expect(sendHlc, isNot(hlc));
-      expect(sendHlc.dateTime, _dateTime);
-      expect(sendHlc.counter, 0);
-      expect(sendHlc.nodeId, hlc.nodeId);
+      final incrementHlc = hlc.increment(wallTime: _dateTime);
+      expect(incrementHlc, isNot(hlc));
+      expect(incrementHlc.dateTime, _dateTime);
+      expect(incrementHlc.counter, 0);
+      expect(incrementHlc.nodeId, hlc.nodeId);
     });
 
     test('Fail on clock drift', () {
@@ -220,7 +230,7 @@ void main() {
     });
   });
 
-  group('Receive', () {
+  group('Merge', () {
     final canonical = Hlc.parse('$_isoTime-0042-abc');
 
     test('Higher canonical time', () {

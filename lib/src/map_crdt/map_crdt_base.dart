@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:crdt/map_crdt.dart';
 import 'package:meta/meta.dart';
@@ -15,12 +16,8 @@ typedef WatchEvent = ({String key, Map<String, Object?>? value});
 /// Check out [SqlCrdt] and descendants for SQL-based solutions.
 abstract class MapCrdtBase extends Crdt {
   late int _canonicalTime;
-
   @override
   int get canonicalTime => _canonicalTime;
-
-  // The collections monitored by this CRDT.
-  Iterable<String> get collections;
 
   /// Whether this dataset is empty.
   bool get isEmpty;
@@ -28,9 +25,7 @@ abstract class MapCrdtBase extends Crdt {
   /// Whether this dataset has at least one record.
   bool get isNotEmpty;
 
-  MapCrdtBase(super.nodeId) {
-    _canonicalTime = getLastModified() ?? 0;
-  }
+  MapCrdtBase(super.nodeId, this._canonicalTime);
 
   @protected
   Record? getRecord(String collection, String key);
@@ -154,7 +149,7 @@ abstract class MapCrdtBase extends Crdt {
     // Remove empty collection changesets
     changeset.removeWhere((_, records) => records.isEmpty);
 
-    return CrdtChangeset.parse(
+    return CrdtChangeset.fromMap(
       changeset.map(
         (collection, records) => MapEntry(
           collection,
@@ -167,7 +162,7 @@ abstract class MapCrdtBase extends Crdt {
   }
 
   @override
-  int? getLastModified({String? onlyNodeId, String? exceptNodeId}) {
+  int getLastModified({String? onlyNodeId, String? exceptNodeId}) {
     assert(onlyNodeId == null || exceptNodeId == null);
 
     final hlcs = collections
@@ -184,8 +179,8 @@ abstract class MapCrdtBase extends Crdt {
         // Get only modified times
         .map((e) => e.modified);
 
-    // Get highest time or null
-    return hlcs.isEmpty ? null : hlcs.reduce((a, b) => a > b ? a : b);
+    // Get highest time or 0
+    return hlcs.fold(0, (p, e) => max(p, e));
   }
 
   @override

@@ -9,6 +9,9 @@ abstract class Crdt {
   /// Get this CRDT's node id
   final String nodeId;
 
+  /// The collections monitored by this CRDT.
+  Iterable<String> get collections;
+
   /// Represents the latest logical timestamp seen in the stored data.
   /// See [Hlc.toTimestamp].
   int get canonicalTime;
@@ -30,8 +33,8 @@ abstract class Crdt {
   /// Returns the last modified timestamp, optionally filtering for or against a
   /// specific node id.
   /// Useful to get "modified since" timestamps for synchronization.
-  /// Returns null if no timestamp is found.
-  FutureOr<int?> getLastModified({String? onlyNodeId, String? exceptNodeId});
+  /// Returns 0 if no timestamp is found.
+  FutureOr<int> getLastModified({String? onlyNodeId, String? exceptNodeId});
 
   /// Get a [Changeset] using the provided [changesetQueries].
   ///

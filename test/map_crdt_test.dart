@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:crdt/crdt.dart';
@@ -16,7 +17,7 @@ FutureOr<TestCrdt> createCrdt(
   String collection,
   String table1, [
   String? table2,
-]) => MapCrdt(randomId(), [table1, table2].nonNulls);
+]) => MapCrdt([table1, table2].nonNulls);
 
 Future<void> deleteCrdt(TestCrdt crdt) async {}
 
@@ -158,11 +159,13 @@ void main() {
     test('Lower node id', () async {
       await crdt.put('table', 'x', {'v': 1});
       await crdt.merge(
-        CrdtChangeset.parse({
+        CrdtChangeset.fromMap({
           'table': [
             {
               'id': 'x',
-              'hlc': crdt.canonicalHlc.apply(nodeId: '0000000'),
+              'hlc': crdt.canonicalHlc.apply(
+                nodeId: '00000000-0000-0000-0000-000000000000',
+              ),
               'data': {'v': 2},
             },
           ],
@@ -174,11 +177,13 @@ void main() {
     test('Higher node id', () async {
       await crdt.put('table', 'x', {'v': 1});
       await crdt.merge(
-        CrdtChangeset.parse({
+        CrdtChangeset.fromMap({
           'table': [
             {
               'id': 'x',
-              'hlc': crdt.canonicalHlc.apply(nodeId: 'FFFFFFFF'),
+              'hlc': crdt.canonicalHlc.apply(
+                nodeId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+              ),
               'data': {'v': 2},
             },
           ],
@@ -231,11 +236,31 @@ void main() {
       await deleteCrdt(crdt2);
     });
 
+    test('From map', () {
+      final hlc = crdt.canonicalHlc;
+      final map = {
+        'table': [
+          {
+            'id': 'x',
+            'hlc': hlc.toString(),
+            'data': {'a': 1},
+          },
+        ],
+      };
+      final changeset = CrdtChangeset.fromMap(map);
+
+      expect(changeset.recordCount, 1);
+      expect(changeset['table']!.first.id, 'x');
+      expect(changeset['table']!.first.hlc, hlc);
+      expect(changeset['table']!.first.data, {'a': 1});
+    });
+
     test('Records properly merged', () async {
+      // Encode to json as a cheap way to deep compare changesets
       expect(
-        crdt.getChangeset().toString(),
-        {
-          'table': (
+        jsonEncode(crdt.getChangeset()),
+        jsonEncode({
+          'table': [
             {
               'id': 'x',
               'hlc': crdtInitialHlc,
@@ -251,8 +276,8 @@ void main() {
               'hlc': crdt2.canonicalHlc,
               'data': {'v': 3},
             },
-          ),
-        }.toString(),
+          ],
+        }),
       );
     });
 

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:uuid/uuid.dart';
+
 import 'map_crdt_base.dart';
 import 'record.dart';
 
@@ -8,11 +10,7 @@ import 'record.dart';
 /// datasets. It is incredibly inefficient.
 class MapCrdt extends MapCrdtBase {
   final Map<String, Map<String, Record>> _recordMaps;
-  final Map<
-    String,
-    StreamController<({String key, Map<String, Object?>? value})>
-  >
-  _changeControllers;
+  final _changeControllers = <String, StreamController<WatchEvent>>{};
 
   @override
   Iterable<String> get collections => _recordMaps.keys;
@@ -27,14 +25,9 @@ class MapCrdt extends MapCrdtBase {
   ///
   /// Pass [nodeId] to use a custom node id, otherwise one will be generated.
   /// Make sure to use a reliable node id generator such as UUIDv4 in prod.
-  MapCrdt(super.nodeId, Iterable<String> collections)
+  MapCrdt(Iterable<String> collections, {String? nodeId})
     : _recordMaps = {for (final collection in collections) collection: {}},
-      _changeControllers = {
-        for (final collection in collections)
-          collection: StreamController.broadcast(),
-      },
-      assert(collections.isNotEmpty),
-      assert(collections.length == collections.toSet().length);
+      super(nodeId ?? Uuid().v4(), 0);
 
   @override
   Record? getRecord(String collection, String key) =>
@@ -54,7 +47,7 @@ class MapCrdt extends MapCrdtBase {
       // Emit change events for each record
       records.forEach(
         (id, record) =>
-            _changeControllers[collection]!.add((key: id, value: record.data)),
+            _changeControllers[collection]?.add((key: id, value: record.data)),
       );
     }
   }
@@ -64,6 +57,9 @@ class MapCrdt extends MapCrdtBase {
     if (!collections.contains(collection)) {
       throw 'Unknown collection: $collection';
     }
+    // Create a steam controller if one doesn't exist yet
+    _changeControllers[collection] ??= StreamController<WatchEvent>.broadcast();
+    // Return the stream
     return key == null
         ? _changeControllers[collection]!.stream
         : _changeControllers[collection]!.stream.where(

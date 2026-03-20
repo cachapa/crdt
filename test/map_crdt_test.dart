@@ -205,7 +205,7 @@ void main() {
     test('Update canonical time after merge', () async {
       await crdt1.put('table', 'x', {'v': 2});
       await crdt.merge(crdt1.getChangeset());
-      expect(crdt.canonicalTime, crdt1.canonicalTime);
+      expect(crdt.canonicalTime >= crdt1.canonicalTime, isTrue);
     });
   });
 
@@ -213,6 +213,8 @@ void main() {
     late Hlc crdtInitialHlc;
     late TestCrdt crdt1;
     late TestCrdt crdt2;
+    late int mod1;
+    late int mod2;
 
     setUp(() async {
       crdt = await createCrdt('crdt', 'table');
@@ -227,7 +229,9 @@ void main() {
 
       crdtInitialHlc = crdt.canonicalHlc;
       await crdt.merge(crdt1.getChangeset());
+      mod1 = crdt.canonicalTime;
       await crdt.merge(crdt2.getChangeset());
+      mod2 = crdt.canonicalTime;
     });
 
     tearDown(() async {
@@ -292,21 +296,15 @@ void main() {
     });
 
     test('After HLC', () {
-      expect(
-        crdt.getChangeset(modifiedAfter: crdt1.canonicalTime).toString(),
-        crdt2.getChangeset().toString(),
-      );
+      expect(crdt.getChangeset(modifiedAfter: mod1), crdt2.getChangeset());
     });
 
     test('Empty changeset', () {
-      expect(
-        crdt.getChangeset(modifiedAfter: crdt2.canonicalTime).recordCount,
-        isZero,
-      );
+      expect(crdt.getChangeset(modifiedAfter: mod2).recordCount, isZero);
     });
 
     test('At HLC', () {
-      final changeset = crdt.getChangeset(modifiedOn: crdt1.canonicalTime);
+      final changeset = crdt.getChangeset(modifiedOn: mod1);
       expect(changeset.toString(), crdt1.getChangeset().toString());
     });
 
@@ -326,6 +324,8 @@ void main() {
   group('Last modified', () {
     late TestCrdt crdt1;
     late TestCrdt crdt2;
+    late int mod1;
+    late int mod2;
 
     setUp(() async {
       crdt = await createCrdt('crdt', 'table');
@@ -339,7 +339,9 @@ void main() {
       await crdt2.put('table', 'z', {'v': 1});
 
       await crdt.merge(crdt1.getChangeset());
+      mod1 = crdt.canonicalTime;
       await crdt.merge(crdt2.getChangeset());
+      mod2 = crdt.canonicalTime;
     });
 
     tearDown(() async {
@@ -349,24 +351,18 @@ void main() {
     });
 
     test('Everything', () {
-      expect(crdt.getLastModified(), crdt2.canonicalTime);
+      expect(crdt.getLastModified(), mod2);
     });
 
     test('Only node id', () {
-      expect(
-        crdt.getLastModified(onlyNodeId: crdt1.nodeId),
-        crdt1.canonicalTime,
-      );
+      expect(crdt.getLastModified(onlyNodeId: crdt1.nodeId), mod1);
     });
 
     test('Except node id', () async {
       // Move canonical time forward in crdt
       await _delay;
       await crdt.put('table', 'a', {'v': 1});
-      expect(
-        crdt.getLastModified(exceptNodeId: crdt.nodeId),
-        crdt2.canonicalTime,
-      );
+      expect(crdt.getLastModified(exceptNodeId: crdt.nodeId), mod2);
     });
 
     test('Assert exclusive parameters', () {

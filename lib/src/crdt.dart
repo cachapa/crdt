@@ -62,11 +62,11 @@ abstract class Crdt {
   /// Checks if changeset is valid. This method is intended for implementations
   /// and shouldn't generally be called from outside.
   ///
-  /// Returns the highest logical time in the changeset or the canonical time,
-  /// if higher.
+  /// Compares the highest logical time in the changeset with the incremented
+  /// canonical time and returns the highest value.
   @protected
   int validateChangeset(CrdtChangeset changeset) {
-    var hlc = canonicalHlc;
+    var hlc = canonicalHlc.increment();
     // Iterate through all the incoming timestamps to:
     // - Check for invalid entries (throws exception)
     // - Update local canonical time if needed

@@ -87,6 +87,16 @@ class CrdtRecord {
 
   @override
   String toString() => '${toJson()}';
+
+  @override
+  bool operator ==(Object other) =>
+      other is CrdtRecord &&
+      id == other.id &&
+      hlc == other.hlc &&
+      data == other.data;
+
+  @override
+  int get hashCode => Object.hash(id, hlc, data);
 }
 
 class _MapBase<K, V> extends MapBase<K, V> {

@@ -70,8 +70,8 @@ void main() {
       expect(Hlc.zero('abc').logicalTime, Hlc.zero('xyz').logicalTime);
       // Random date
       expect(
-        Hlc(DateTime(2025, 04, 25), 123, 'abc').logicalTime,
-        114395185152000123,
+        Hlc(DateTime.utc(2025, 04, 25), 123, 'abc').logicalTime,
+        114395657011200123,
       );
       // Counter increases the int value monotonically
       expect(

@@ -10,11 +10,11 @@ import 'hlc.dart';
 ///   'collection_name': [
 ///     {
 ///       'id': '1::2',          // Concatenated object ids using :: as separator
-///       'hlc': '<hlc>',
+///       'hlc': '2026-03-25T11:39:21.952Z-0000-496e5250-49d2-4d3e-97d2-42d6eb65fc89',
 ///       'data': {              // Null if record was deleted
 ///         'user_id': 1,        // These two ids are concatenated above
 ///         'purchase_id': 2,
-///         'created_at': '<date>',
+///         'created_at': '2026-03-25T11:39:21.953507Z',
 ///         'price': 123
 ///       }
 ///     }

@@ -26,7 +26,7 @@ abstract class Crdt {
   /// timestamp at which they happened.
   /// Useful for guaranteeing atomic merges across multiple tables.
   Stream<({int timestamp, Iterable<String> tables})> get onTablesChanged =>
-      _tableChangesController.stream;
+      _tableChangesController.stream.where((e) => e.tables.isNotEmpty);
 
   Crdt(this.nodeId);
 
@@ -38,8 +38,8 @@ abstract class Crdt {
 
   /// Get a [Changeset] using the provided [changesetQueries].
   ///
-  /// Set [collectionFilter] to [null] disable filtering.
-  /// Set map values to [null] to filter only by collection name.
+  /// [onlyCollections] Only get changesets for the specified collections.
+  /// Set to [null] to get all monitored collections.
   ///
   /// [onlyNodeId] only records set by the specified node.
   /// Useful for clients to send local changes only.
@@ -53,6 +53,7 @@ abstract class Crdt {
   /// [modifiedAfter] records modified after the specified [Hlc] timestamp.
   /// Useful for syncing delta updates.
   FutureOr<CrdtChangeset> getChangeset({
+    Iterable<String>? onlyCollections,
     String? onlyNodeId,
     String? exceptNodeId,
     int? modifiedOn,

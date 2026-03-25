@@ -100,40 +100,25 @@ abstract class MapCrdtBase extends Crdt {
 
   @override
   CrdtChangeset getChangeset({
-    Map<String, Map<String, Object?>?>? collectionFilter,
+    Iterable<String>? onlyCollections,
     String? onlyNodeId,
     String? exceptNodeId,
     int? modifiedOn,
     int? modifiedAfter,
   }) {
     assert(
-      collectionFilter == null ||
-          collectionFilter.keys.toSet().difference(collections.toSet()).isEmpty,
-      'Unrecognized table(s): ${collectionFilter.keys.toSet().difference(collections.toSet()).join(', ')}.',
+      onlyCollections == null ||
+          onlyCollections.toSet().difference(collections.toSet()).isEmpty,
+      'Unrecognized collections(s): ${onlyCollections.toSet().difference(collections.toSet()).join(', ')}.',
     );
     assert(onlyNodeId == null || exceptNodeId == null);
     assert(modifiedOn == null || modifiedAfter == null);
 
     // Get records for the specified collections
     final changeset = {
-      for (final collection in collectionFilter?.keys ?? collections)
+      for (final collection in onlyCollections ?? collections)
         collection: getRecords(collection),
     };
-
-    // Apply collection filter
-    for (final entry
-        in (collectionFilter?.entries.where((e) => (e.value != null))) ??
-            <MapEntry<String, Map<String, Object?>>>[]) {
-      final collection = entry.key;
-      final filters = entry.value!;
-      for (final filter in filters.entries) {
-        changeset[collection]!.removeWhere(
-          (key, record) =>
-              !record.data!.containsKey(filter.key) ||
-              !(record.data![filter.key] != filter.value),
-        );
-      }
-    }
 
     // Apply remaining filters
     for (final records in changeset.values) {

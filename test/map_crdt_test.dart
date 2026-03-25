@@ -288,9 +288,7 @@ void main() {
     test('Filter entire collections', () async {
       final crdt3 = await createCrdt('table', 'another_table');
       await crdt3.put('another_table', 'a', {'v': 1});
-      final changeset = crdt3.getChangeset(
-        collectionFilter: {'another_table': null},
-      );
+      final changeset = crdt3.getChangeset(onlyCollections: ['another_table']);
       expect(changeset.collections, ['another_table']);
       await deleteCrdt(crdt3);
     });
